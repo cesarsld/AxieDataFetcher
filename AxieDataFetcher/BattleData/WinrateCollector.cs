@@ -23,8 +23,6 @@ namespace AxieDataFetcher.BattleData
     class WinrateCollector
     {
         public static bool IsDbSyncing = false;
-        public static int apiPerc = 0;
-        public static int dbPerc = 0;
         public static int lastUnixTimeCheck = 0;
         public static readonly int unixTimeBetweenUpdates = 86400;
         private static int updateCount = 0;
@@ -124,7 +122,7 @@ namespace AxieDataFetcher.BattleData
             }
         }
 
-        public static void GetUniquePlayers()
+        public static void GetInitUniquePlayers()
         {
             Dictionary<int, Winrate> winrateData = new Dictionary<int, Winrate>();
             List<AxieWinrate> winrateList = new List<AxieWinrate>();
@@ -201,7 +199,7 @@ namespace AxieDataFetcher.BattleData
             string battleNumberPath = "AxieData/LastCheck.txt";
             int lastChecked = 0;
             int lastBattle = 0;
-            apiPerc = 0;
+            int apiPerc = 0;
             int counter = 0;
             using (System.Net.WebClient wc = new System.Net.WebClient())
             {
@@ -284,11 +282,10 @@ namespace AxieDataFetcher.BattleData
                 }
             }
             foreach (var axie in winrateList) axie.GetWinrate();
-            apiPerc = 100;
             var db = DatabaseConnection.GetDb();
             var collection = db.GetCollection<BsonDocument>("AxieWinrate");
             Console.WriteLine("Initialising DB write phase");
-            dbPerc = 0;
+            int dbPerc = 0;
             perc = (float)winrateList.Count / 100;
             counter = 0;
             foreach (var axie in winrateList)
