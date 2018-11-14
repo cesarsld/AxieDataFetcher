@@ -73,6 +73,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockchainFetcher\EggCount.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="AxieObjects\AxieObjectOld.cs" />
     <Compile Include="AxieObjects\AxieObjectV1.cs" />

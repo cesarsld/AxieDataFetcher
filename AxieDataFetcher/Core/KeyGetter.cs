@@ -31,5 +31,14 @@ namespace AxieDataFetcher.Core
                 }
             }
         }
+
+        public static string GetABI(string name)
+        {
+            using (StreamReader sr = new StreamReader("AxieData/" + name + ".txt", Encoding.UTF8))
+            {
+                string abi = sr.ReadToEnd();
+                return abi;
+            }
+        }
     }
 }

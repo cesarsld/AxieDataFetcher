@@ -105,7 +105,7 @@ namespace AxieDataFetcher.BattleData
 
             foreach (var axie in winrateList) axie.GetWinrate();
             var db = DatabaseConnection.GetDb();
-            var collection = db.GetCollection<BsonDocument>("AxieWinrate");
+            var collection = db.GetCollection<BsonDocument>("AxieWinrateTest");
             float percDB = (float)winrateList.Count / 100f;
             int counter = 0;
             int currentperc = 0;
@@ -134,7 +134,7 @@ namespace AxieDataFetcher.BattleData
             int perc = battleCount / 100;
             int currentPerc = 0;
             var db1 = DatabaseConnection.GetDb();
-            var collection1 = db1.GetCollection<DailyUsers>("DailyBattleDAU");
+            var collection1 = db1.GetCollection<DailyUsers>("DailyBattleDAUTest");
             while (axieIndex < battleCount)
             {
                 axieIndex++;
@@ -283,7 +283,7 @@ namespace AxieDataFetcher.BattleData
             }
             foreach (var axie in winrateList) axie.GetWinrate();
             var db = DatabaseConnection.GetDb();
-            var collection = db.GetCollection<BsonDocument>("AxieWinrate");
+            var collection = db.GetCollection<BsonDocument>("AxieWinrateTest");
             Console.WriteLine("Initialising DB write phase");
             int dbPerc = 0;
             perc = (float)winrateList.Count / 100;
@@ -316,7 +316,7 @@ namespace AxieDataFetcher.BattleData
 
 
 
-            var collecDau = db.GetCollection<DailyUsers>("DailyBattleDAU");
+            var collecDau = db.GetCollection<DailyUsers>("DailyBattleDAUTest");
             var dailyData = new DailyUsers(lastUnixTimeCheck, uniqueUsers.Count);
             collecDau.InsertOne(dailyData);
 

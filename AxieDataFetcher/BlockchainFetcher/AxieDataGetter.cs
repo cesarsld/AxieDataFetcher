@@ -12,6 +12,8 @@ using Newtonsoft.Json.Linq;
 using AxieDataFetcher.AxieObjects;
 using Nethereum.Util;
 using System.Linq;
+using AxieDataFetcher.Core;
+using AxieDataFetcher.Mongo;
 namespace AxieDataFetcher.BlockchainFetcher
 {
     public class AxieDataGetter
@@ -22,1221 +24,8 @@ namespace AxieDataFetcher.BlockchainFetcher
         private static string NftAddress = "0xf5b0a3efb8e8e4c201e2a935f110eaaf3ffecb8d";
         private static string AxieLabContractAddress = "0x99ff9f4257D5b6aF1400C994174EbB56336BB79F";
         private static string AxieExtraDataContract = "0x10e304a53351b272dc415ad049ad06565ebdfe34";
-        private static string auctionABI = @"[
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': 'token',
-        'type': 'address'
-      }
-    ],
-    'name': 'reclaimToken',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': 'contractAddr',
-        'type': 'address'
-      }
-    ],
-    'name': 'reclaimContract',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'unpause',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '',
-        'type': 'address'
-      },
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'auctions',
-    'outputs': [
-      {
-        'name': 'seller',
-        'type': 'address'
-      },
-      {
-        'name': 'startingPrice',
-        'type': 'uint128'
-      },
-      {
-        'name': 'endingPrice',
-        'type': 'uint128'
-      },
-      {
-        'name': 'duration',
-        'type': 'uint64'
-      },
-      {
-        'name': 'startedAt',
-        'type': 'uint64'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'paused',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'bool'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'ownerCut',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'pause',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'owner',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'address'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'reclaimEther',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': 'from_',
-        'type': 'address'
-      },
-      {
-        'name': 'value_',
-        'type': 'uint256'
-      },
-      {
-        'name': 'data_',
-        'type': 'bytes'
-      }
-    ],
-    'name': 'tokenFallback',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': 'newOwner',
-        'type': 'address'
-      }
-    ],
-    'name': 'transferOwnership',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'inputs': [
-      {
-        'name': '_ownerCut',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'constructor'
-  },
-  {
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'fallback'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'indexed': true,
-        'name': '_tokenId',
-        'type': 'uint256'
-      },
-      {
-        'indexed': false,
-        'name': '_startingPrice',
-        'type': 'uint256'
-      },
-      {
-        'indexed': false,
-        'name': '_endingPrice',
-        'type': 'uint256'
-      },
-      {
-        'indexed': false,
-        'name': '_duration',
-        'type': 'uint256'
-      },
-      {
-        'indexed': false,
-        'name': '_seller',
-        'type': 'address'
-      }
-    ],
-    'name': 'AuctionCreated',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'indexed': true,
-        'name': '_tokenId',
-        'type': 'uint256'
-      },
-      {
-        'indexed': false,
-        'name': '_totalPrice',
-        'type': 'uint256'
-      },
-      {
-        'indexed': false,
-        'name': '_winner',
-        'type': 'address'
-      }
-    ],
-    'name': 'AuctionSuccessful',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'indexed': true,
-        'name': '_tokenId',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'AuctionCancelled',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [],
-    'name': 'Pause',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [],
-    'name': 'Unpause',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': 'previousOwner',
-        'type': 'address'
-      },
-      {
-        'indexed': true,
-        'name': 'newOwner',
-        'type': 'address'
-      }
-    ],
-    'name': 'OwnershipTransferred',
-    'type': 'event'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'name': '_tokenId',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'getAuction',
-    'outputs': [
-      {
-        'name': 'seller',
-        'type': 'address'
-      },
-      {
-        'name': 'startingPrice',
-        'type': 'uint256'
-      },
-      {
-        'name': 'endingPrice',
-        'type': 'uint256'
-      },
-      {
-        'name': 'duration',
-        'type': 'uint256'
-      },
-      {
-        'name': 'startedAt',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'name': '_tokenId',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'getCurrentPrice',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'name': '_tokenId',
-        'type': 'uint256'
-      },
-      {
-        'name': '_startingPrice',
-        'type': 'uint256'
-      },
-      {
-        'name': '_endingPrice',
-        'type': 'uint256'
-      },
-      {
-        'name': '_duration',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'createAuction',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'name': '_tokenId',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'bid',
-    'outputs': [],
-    'payable': true,
-    'stateMutability': 'payable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'name': '_tokenId',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'cancelAuction',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_nftAddress',
-        'type': 'address'
-      },
-      {
-        'name': '_tokenId',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'cancelAuctionWhenPaused',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  }
-]";
-        private static string labABI = @"[
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'eggCoinContract',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'address'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'lastSaleDate',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'genePoolContract',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'address'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'unpause',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': 'account',
-        'type': 'address'
-      }
-    ],
-    'name': 'isPauser',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'bool'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '',
-        'type': 'address'
-      }
-    ],
-    'name': 'numPendingAxie',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'pendingGeneHashOwner',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'address'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'paused',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'bool'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'renouncePauser',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'coreExtraContract',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'address'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'defaultReferralPercentage',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'renounceOwnership',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'withdrawEther',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'nextPricePercentage',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': 'account',
-        'type': 'address'
-      }
-    ],
-    'name': 'addPauser',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'pause',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'owner',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'address'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'isOwner',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'bool'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_percentage',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'setDefaultReferralPercentage',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': 'account',
-        'type': 'address'
-      }
-    ],
-    'name': 'addMinter',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [],
-    'name': 'renounceMinter',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': 'account',
-        'type': 'address'
-      }
-    ],
-    'name': 'isMinter',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'bool'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'NUM_EGG_COINS_PER_AXIE',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '',
-        'type': 'address'
-      }
-    ],
-    'name': 'referralPercentage',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'startingPrice',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_referrers',
-        'type': 'address[]'
-      },
-      {
-        'name': '_percentage',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'setReferralPercentage',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': 'newOwner',
-        'type': 'address'
-      }
-    ],
-    'name': 'transferOwnership',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [],
-    'name': 'minDAIPrice',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'inputs': [
-      {
-        'name': '_coreExtraContract',
-        'type': 'address'
-      },
-      {
-        'name': '_genePoolContract',
-        'type': 'address'
-      },
-      {
-        'name': '_eggCoinContract',
-        'type': 'address'
-      },
-      {
-        'name': '_minDAIPrice',
-        'type': 'uint256'
-      },
-      {
-        'name': '_nextPricePercentage',
-        'type': 'uint256'
-      },
-      {
-        'name': '_defaultReferralPercentage',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'constructor'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': '_buyer',
-        'type': 'address'
-      },
-      {
-        'indexed': true,
-        'name': '_referrer',
-        'type': 'address'
-      },
-      {
-        'indexed': false,
-        'name': '_amount',
-        'type': 'uint8'
-      },
-      {
-        'indexed': false,
-        'name': '_price',
-        'type': 'uint256'
-      },
-      {
-        'indexed': false,
-        'name': '_referralReward',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'AxieBought',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': '_receiver',
-        'type': 'address'
-      }
-    ],
-    'name': 'AxieRedeemed',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': '_owner',
-        'type': 'address'
-      },
-      {
-        'indexed': false,
-        'name': '_geneHash',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'AxieClaimed',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': '_referrer',
-        'type': 'address'
-      },
-      {
-        'indexed': false,
-        'name': '_percentage',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'ReferralPercentageUpdated',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': 'previousOwner',
-        'type': 'address'
-      }
-    ],
-    'name': 'OwnershipRenounced',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': 'previousOwner',
-        'type': 'address'
-      },
-      {
-        'indexed': true,
-        'name': 'newOwner',
-        'type': 'address'
-      }
-    ],
-    'name': 'OwnershipTransferred',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [],
-    'name': 'Paused',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [],
-    'name': 'Unpaused',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': 'account',
-        'type': 'address'
-      }
-    ],
-    'name': 'PauserAdded',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': 'account',
-        'type': 'address'
-      }
-    ],
-    'name': 'PauserRemoved',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': 'account',
-        'type': 'address'
-      }
-    ],
-    'name': 'MinterAdded',
-    'type': 'event'
-  },
-  {
-    'anonymous': false,
-    'inputs': [
-      {
-        'indexed': true,
-        'name': 'account',
-        'type': 'address'
-      }
-    ],
-    'name': 'MinterRemoved',
-    'type': 'event'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '_amount',
-        'type': 'uint8'
-      }
-    ],
-    'name': 'getPrice',
-    'outputs': [
-      {
-        'name': '_price',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '_amount',
-        'type': 'uint8'
-      }
-    ],
-    'name': 'getNextPrice',
-    'outputs': [
-      {
-        'name': '_price',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_amount',
-        'type': 'uint8'
-      },
-      {
-        'name': '_referrer',
-        'type': 'address'
-      }
-    ],
-    'name': 'buyAxie',
-    'outputs': [
-      {
-        'name': '_totalPrice',
-        'type': 'uint256'
-      }
-    ],
-    'payable': true,
-    'stateMutability': 'payable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_from',
-        'type': 'address'
-      },
-      {
-        'name': '',
-        'type': 'uint256'
-      },
-      {
-        'name': '_tokenAddress',
-        'type': 'address'
-      },
-      {
-        'name': '',
-        'type': 'bytes'
-      }
-    ],
-    'name': 'receiveApproval',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_genes',
-        'type': 'uint256'
-      },
-      {
-        'name': '_geneHash',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'unlockAxie',
-    'outputs': [
-      {
-        'name': '_axieId',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_minDAIPrice',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'setMinDAIPrice',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  },
-  {
-    'constant': false,
-    'inputs': [
-      {
-        'name': '_nextPricePercentage',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'setNextPricePercentage',
-    'outputs': [],
-    'payable': false,
-    'stateMutability': 'nonpayable',
-    'type': 'function'
-  }
-]
-";
-        private static string extraABI = @"[
-  {
-    'constant': true,
-    'inputs': [
-      {
-        'name': '_axieId',
-        'type': 'uint256'
-      }
-    ],
-    'name': 'getExtra',
-    'outputs': [
-      {
-        'name': '',
-        'type': 'uint256'
-      },
-      {
-        'name': '',
-        'type': 'uint256'
-      },
-      {
-        'name': '',
-        'type': 'uint256'
-      },
-      {
-        'name': '',
-        'type': 'uint256'
-      }
-    ],
-    'payable': false,
-    'stateMutability': 'view',
-    'type': 'function'
-  }
-]";
-
         #endregion
-        private static ulong marketPlaceChannelId = 423343101428498435;
-        private static ulong botCommandChannelId = 487932149354463232;
-        private static BigInteger lastBlockChecked = 6379721;
-        public static double eggLabPrice = 0.6f; //change to double
+        private static BigInteger lastBlockChecked = 6421665;
 
         //public static Queue<Task<IUserMessage>> messageQueue = new Queue<Task<IUserMessage>>();
 
@@ -1248,8 +37,8 @@ namespace AxieDataFetcher.BlockchainFetcher
         public static async Task<AxieExtraData> GetExtraData(int axieId)
         {
             var web3 = new Web3("https://mainnet.infura.io");
-            var extraDataContract = web3.Eth.GetContract(extraABI, AxieExtraDataContract);
-            var getExtraFunction = extraDataContract.GetFunction("getExtra");
+            var ownerDataContract = web3.Eth.GetContract(KeyGetter.GetABI("onwerDataABI"), AxieExtraDataContract);
+            var getExtraFunction = ownerDataContract.GetFunction("getExtra");
             try
             {
                 var result = await getExtraFunction.CallDeserializingToObjectAsync<AxieExtraData>(new BigInteger(axieId));
@@ -1266,7 +55,7 @@ namespace AxieDataFetcher.BlockchainFetcher
         public static async Task<AxieExtraData> test(int axieId)
         {
             var web3 = new Web3("https://mainnet.infura.io");
-            var auctionContract = web3.Eth.GetContract(auctionABI, AxieCoreContractAddress);
+            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
             var getSellerInfoFunction = auctionContract.GetFunction("getAuction");
             try
             {
@@ -1292,13 +81,13 @@ namespace AxieDataFetcher.BlockchainFetcher
             //_ = TaskHandler.UpdateServiceCheckLoop();
             var web3 = new Web3("https://mainnet.infura.io");
             //get contracts
-            var auctionContract = web3.Eth.GetContract(auctionABI, AxieCoreContractAddress);
+            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
             var getSellerInfoFunction = auctionContract.GetFunction("getAuction");
-            var labContract = web3.Eth.GetContract(labABI, AxieLabContractAddress);
+            var labContract = web3.Eth.GetContract(KeyGetter.GetABI("labABI"), AxieLabContractAddress);
             //get events
             var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
             var auctionCreatedEvent = auctionContract.GetEvent("AuctionCreated");
-            //var axieBoughtEvent = labContract.GetEvent("AxieBought");
+            var axieBoughtEvent = labContract.GetEvent("AxieBought");
             var auctionCancelled = auctionContract.GetEvent("AuctionCancelled");
 
             //set block range search
@@ -1312,12 +101,12 @@ namespace AxieDataFetcher.BlockchainFetcher
                     var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(firstBlock, lastBlock);
                     var auctionCancelledFilterAll = auctionCancelled.CreateFilterInput(firstBlock, lastBlock);
                     var auctionCreationFilterAll = auctionCreatedEvent.CreateFilterInput(firstBlock, lastBlock);
-                    //var labFilterAll = axieBoughtEvent.CreateFilterInput(firstBlock, lastBlock);
+                    var labFilterAll = axieBoughtEvent.CreateFilterInput(firstBlock, lastBlock);
 
                     //get logs from blockchain
                     var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
                     var auctionCancelledLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionCancelledEvent>(auctionFilterAll);
-                    //var labLogs = await axieBoughtEvent.GetAllChanges<AxieBoughtEvent>(labFilterAll);
+                    var labLogs = await axieBoughtEvent.GetAllChanges<AxieBoughtEvent>(labFilterAll);
                     var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
 
                     BigInteger latestLogBlock = 0;
@@ -1347,23 +136,21 @@ namespace AxieDataFetcher.BlockchainFetcher
                             input[1] = log.Event.tokenId;
                             var sellerInfo = await getSellerInfoFunction.CallDeserializingToObjectAsync<SellerInfo>(
                                 new BlockParameter(new HexBigInteger(log.Log.BlockNumber.Value - 1)), input);
-                            await Task.Delay(5000);
+
                         };
                         Console.WriteLine("End of batch");
                     }
-                    //if (labLogs != null && labLogs.Count > 0)
-                    //{
-                    //    foreach (var log in labLogs)
-                    //    {
-                    //        latestLogBlock = log.Log.BlockNumber.Value;
-                    //        float priceinEth = Convert.ToSingle(Nethereum.Util.UnitConversion.Convert.FromWei(log.Event.price).ToString());
-                    //        eggLabPrice = priceinEth * 1.07;
-                    //        int amount = log.Event.amount;
-                    //        await PostLabSaleToBotCommand(amount, priceinEth);
-                    //        await Task.Delay(5000);
-                    //    };
-                    //    Console.WriteLine("End of batch");
-                    //}
+                    if (labLogs != null && labLogs.Count > 0)
+                    {
+                        foreach (var log in labLogs)
+                        {
+                            latestLogBlock = log.Log.BlockNumber.Value;
+                            float priceinEth = Convert.ToSingle(Nethereum.Util.UnitConversion.Convert.FromWei(log.Event.price).ToString());
+                            int amount = log.Event.amount;
+                            
+                        };
+                        Console.WriteLine("End of batch");
+                    }
                     await Task.Delay(60000);
                     if (latestLogBlock > lastBlock.BlockNumber.Value) firstBlock = new BlockParameter(new HexBigInteger(latestLogBlock + 1));
                     else firstBlock = new BlockParameter(new HexBigInteger(lastBlock.BlockNumber.Value + 1));
@@ -1376,6 +163,66 @@ namespace AxieDataFetcher.BlockchainFetcher
                     IsServiceOn = false;
                     break;
                 }
+
+            }
+        }
+
+        public static async Task FetchLogsFromRange()
+        {
+            var web3 = new Web3("https://mainnet.infura.io");
+            //get contracts
+            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
+            var getSellerInfoFunction = auctionContract.GetFunction("getAuction");
+            var labContract = web3.Eth.GetContract(KeyGetter.GetABI("labABI"), AxieLabContractAddress);
+            //get events
+            var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
+            var auctionCreatedEvent = auctionContract.GetEvent("AuctionCreated");
+            var axieBoughtEvent = labContract.GetEvent("AxieBought");
+            var auctionCancelled = auctionContract.GetEvent("AuctionCancelled");
+
+            //set block range search
+            var lastBlock = await GetLastBlockCheckpoint(web3);
+            var firstBlock = GetInitialBlockCheckpoint(lastBlock.BlockNumber);
+
+            //prepare filters
+            var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(firstBlock, lastBlock);
+            var auctionCancelledFilterAll = auctionCancelled.CreateFilterInput(firstBlock, lastBlock);
+            var auctionCreationFilterAll = auctionCreatedEvent.CreateFilterInput(firstBlock, lastBlock);
+            var labFilterAll = axieBoughtEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), await GetLastBlockCheckpoint(web3));
+
+            //get logs from blockchain
+            //var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
+            //var auctionCancelledLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionCancelledEvent>(auctionFilterAll);
+            var labLogs = await axieBoughtEvent.GetAllChanges<AxieBoughtEvent>(labFilterAll);
+            //var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
+
+            int time = 0;
+            int eggCount = 0;
+
+            int perc = 0;
+            int count = 0;
+            int div = labLogs.Count / 100;
+            foreach (var log in labLogs)
+            {
+                count++;
+                if (count > div)
+                {
+                    perc++;
+                    Console.Write($"{perc}%");
+                    count = 0;
+                }
+                var blockParam = new BlockParameter(log.Log.BlockNumber);
+                var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(blockParam);
+                var blockTime = Convert.ToInt32(block.Timestamp.Value.ToString());
+                if (time == 0) time = blockTime;
+                if (blockTime - time > 86400)
+                {
+                    var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
+                    await collec.InsertOneAsync(new EggCount(time, eggCount));
+                    eggCount = 0;
+                    time = blockTime;
+                }
+                eggCount += log.Event.amount;
             }
         }
 
@@ -1390,6 +237,24 @@ namespace AxieDataFetcher.BlockchainFetcher
         {
             var firstBlock = blockNumber.Value - 10;
             return new BlockParameter(new HexBigInteger(firstBlock));
+        }
+
+        static public async Task ScanBlocksExample(Web3 web3, ulong startBlockNumber, ulong endBlockNumber)
+        {
+            Console.WriteLine("ScanBlocksExample:");
+
+            long txTotalCount = 0;
+            for (ulong blockNumber = startBlockNumber; blockNumber <= endBlockNumber; blockNumber++)
+            {
+                var blockParameter = new Nethereum.RPC.Eth.DTOs.BlockParameter(blockNumber);
+                var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(blockParameter);
+                var trans = block.Transactions;
+                int txCount = trans.Length;
+                txTotalCount += txCount;
+                if (blockNumber % 1000 == 0) Console.Write(".");
+
+            }
+            Console.WriteLine();
         }
     }
 
@@ -1461,8 +326,8 @@ namespace AxieDataFetcher.BlockchainFetcher
     }
 
     [FunctionOutput]
-    public class AxieExtraData 
-    { 
+    public class AxieExtraData
+    {
         [Parameter("uint256", "_sireId", 1)]
         public BigInteger sireId { get; set; }
 
@@ -1496,7 +361,7 @@ namespace AxieDataFetcher.BlockchainFetcher
     }
 
     [Function("getExtra")]
-    public class AxieExtraFunction 
+    public class AxieExtraFunction
     {
         [Parameter("uint256", "_axieId", 1)]
         public BigInteger axieId { get; set; }
