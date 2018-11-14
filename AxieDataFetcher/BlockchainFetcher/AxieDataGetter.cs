@@ -210,20 +210,18 @@ namespace AxieDataFetcher.BlockchainFetcher
                 if (count > div)
                 {
                     perc++;
-                    Console.Write($"{perc}%");
+                    Console.WriteLine($"{perc}%");
                     count = 0;
                 }
-                var blockParam = new BlockParameter(log.Log.BlockNumber);
-                var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(blockParam);
-                var blockTime = Convert.ToInt32(block.Timestamp.Value.ToString());
-                if (time == 0) time = blockTime;
-                if (blockTime - time > 86400)
-                {
-                    var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
-                    await collec.InsertOneAsync(new EggCount(time, eggCount));
-                    eggCount = 0;
-                    time = blockTime;
-                }
+                //var blockParam = new BlockParameter(log.Log.BlockNumber);
+                //var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(blockParam);
+                //var blockTime = Convert.ToInt32(block.Timestamp.Value.ToString());
+                //if (time == 0) time = blockTime;
+                //if (blockTime - time > 86400)
+                //{
+                //    eggCount = 0;
+                //    time = blockTime;
+                //}
                 eggCount += log.Event.amount;
             }
             //foreach (var log in auctionLogs)
@@ -248,6 +246,8 @@ namespace AxieDataFetcher.BlockchainFetcher
             //    }
             //    uniqueBuyers ++;
             //}
+            var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
+            await collec.InsertOneAsync(new EggCount(time, eggCount));
             KeyGetter.SetLastCheckedBlock(lastBlock.BlockNumber.Value);
         }
 

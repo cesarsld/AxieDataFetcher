@@ -13,13 +13,15 @@ namespace AxieDataFetcher.Core
     class LoopHandler
     {
         public static int lastUnixTimeCheck = 0;
+        public static readonly int unixTimeBetweenUpdates = 86400;
+
         public static async Task UpdateServiceCheckLoop()
         {
             while (true)
             {
                 int unixTime = Convert.ToInt32(((DateTimeOffset)(DateTime.UtcNow)).ToUnixTimeSeconds());
                 if (lastUnixTimeCheck == 0) UpdateUnixLastCheck();
-                if (unixTime - lastUnixTimeCheck >= WinrateCollector.unixTimeBetweenUpdates)
+                if (unixTime - lastUnixTimeCheck >= unixTimeBetweenUpdates)
                 {
 
                     lastUnixTimeCheck = unixTime;
