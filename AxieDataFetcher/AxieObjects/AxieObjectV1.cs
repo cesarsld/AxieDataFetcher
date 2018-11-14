@@ -11,6 +11,7 @@ namespace AxieDataFetcher.AxieObjects
     public class AxieObjectV1
     {
         public int id;
+        public int birthDate;
         public string name;
         public string owner;
         public string genes;

@@ -184,20 +184,21 @@ namespace AxieDataFetcher.BlockchainFetcher
             var lastBlock = await GetLastBlockCheckpoint(web3);
             var firstBlock = GetInitialBlockCheckpoint(lastBlock.BlockNumber);
 
-            //prepare filters
+            //prepare filters CHANGE FIRST BLOCK
             var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(firstBlock, lastBlock);
             var auctionCancelledFilterAll = auctionCancelled.CreateFilterInput(firstBlock, lastBlock);
             var auctionCreationFilterAll = auctionCreatedEvent.CreateFilterInput(firstBlock, lastBlock);
             var labFilterAll = axieBoughtEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), await GetLastBlockCheckpoint(web3));
 
             //get logs from blockchain
-            //var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
+            var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
             //var auctionCancelledLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionCancelledEvent>(auctionFilterAll);
             var labLogs = await axieBoughtEvent.GetAllChanges<AxieBoughtEvent>(labFilterAll);
             //var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
 
             int time = 0;
             int eggCount = 0;
+            int uniqueBuyers = 0;
 
             int perc = 0;
             int count = 0;
@@ -223,6 +224,28 @@ namespace AxieDataFetcher.BlockchainFetcher
                     time = blockTime;
                 }
                 eggCount += log.Event.amount;
+            }
+            foreach (var log in auctionLogs)
+            {
+                count++;
+                if (count > div)
+                {
+                    perc++;
+                    Console.Write($"{perc}%");
+                    count = 0;
+                }
+                var blockParam = new BlockParameter(log.Log.BlockNumber);
+                var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(blockParam);
+                var blockTime = Convert.ToInt32(block.Timestamp.Value.ToString());
+                if (time == 0) time = blockTime;
+                if (blockTime - time > 86400)
+                {
+                    var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
+                    await collec.InsertOneAsync(new EggCount(time, eggCount));
+                    eggCount = 0;
+                    time = blockTime;
+                }
+                uniqueBuyers ++;
             }
         }
 

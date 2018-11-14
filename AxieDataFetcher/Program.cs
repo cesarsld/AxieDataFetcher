@@ -11,7 +11,7 @@ namespace AxieDataFetcher
     {
         static void Main(string[] args)
         {
-            AxieDataGetter.FetchLogsFromRange().GetAwaiter().GetResult();
+            //AxieDataGetter.FetchLogsFromRange().GetAwaiter().GetResult();
             Console.WriteLine("Hello World!");
         }
     }

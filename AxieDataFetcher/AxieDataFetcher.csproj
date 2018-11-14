@@ -85,11 +85,16 @@
     <Compile Include="Core\KeyGetter.cs" />
     <Compile Include="Core\LoopHandler.cs" />
     <Compile Include="Mongo\DatabaseConnection.cs" />
+    <Compile Include="EggsSpawnedData\EggsSpawnDataFetcher.cs" />
+    <Compile Include="EggsSpawnedData\EggCount.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
+  <ItemGroup>
+    <Folder Include="EggsSpawnedData\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

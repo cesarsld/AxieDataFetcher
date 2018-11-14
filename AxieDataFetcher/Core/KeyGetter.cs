@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.IO;
+using System.Numerics;
 using System.Threading.Tasks;
 
 namespace AxieDataFetcher.Core
@@ -38,6 +39,37 @@ namespace AxieDataFetcher.Core
             {
                 string abi = sr.ReadToEnd();
                 return abi;
+            }
+        }
+
+        public static BigInteger GetLastCheckedBlock()
+        {
+            using (StreamReader sr = new StreamReader("AxieData/LastBlock.txt", Encoding.UTF8))
+            {
+                string blockNumber = sr.ReadToEnd();
+                return BigInteger.Parse(blockNumber);
+            }
+        }
+        public static void SetLastCheckedBlock(BigInteger number)
+        {
+            using (StreamWriter sw = new StreamWriter("AxieData/LastBlock.txt"))
+            {
+                sw.Write(number.ToString());
+            }
+        }
+        public static int GetLastCheckedAxie()
+        {
+            using (StreamReader sr = new StreamReader("AxieData/LastAxie.txt", Encoding.UTF8))
+            {
+                string axie = sr.ReadToEnd();
+                return Convert.ToInt32(axie);
+            }
+        }
+        public static void SetLastCheckedAxie(int number)
+        {
+            using (StreamWriter sw = new StreamWriter("AxieData/LastAxie.txt"))
+            {
+                sw.Write(number.ToString());
             }
         }
     }
