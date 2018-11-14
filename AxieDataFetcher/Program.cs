@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AxieDataFetcher.BlockchainFetcher;
+using AxieDataFetcher.EggsSpawnedData;
+using AxieDataFetcher.Core;
 
 namespace AxieDataFetcher
 {
@@ -11,8 +13,9 @@ namespace AxieDataFetcher
     {
         static void Main(string[] args)
         {
-            //AxieDataGetter.FetchLogsFromRange().GetAwaiter().GetResult();
+            
             Console.WriteLine("Hello World!");
+            LoopHandler.UpdateServiceCheckLoop().GetAwaiter().GetResult();
         }
     }
 }

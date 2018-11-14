@@ -15,6 +15,7 @@ using MongoDB.Driver.Core;
 using System.Data;
 using AxieDataFetcher.Mongo;
 using AxieDataFetcher.AxieObjects;
+using AxieDataFetcher.Core;
 
 namespace AxieDataFetcher.BattleData
 {
@@ -22,8 +23,6 @@ namespace AxieDataFetcher.BattleData
 
     class WinrateCollector
     {
-        public static bool IsDbSyncing = false;
-        public static int lastUnixTimeCheck = 0;
         public static readonly int unixTimeBetweenUpdates = 86400;
         private static int updateCount = 0;
         public static void GetAllData()
@@ -179,22 +178,10 @@ namespace AxieDataFetcher.BattleData
 
 
 
-        public static void UpdateUnixLastCheck()
+        public static async Task GetWrSinceLastChack()
         {
-            using (StreamReader sr = new StreamReader("AxieData/LastTimeCheck.txt", Encoding.UTF8))
-            {
-                lastUnixTimeCheck = Convert.ToInt32(sr.ReadToEnd());
-            }
-        }
-        public static async Task GetDataSinceLastChack()
-        {
+            Console.WriteLine("WR per day init");
             List<string> uniqueUsers = new List<string>();
-            IsDbSyncing = true;
-            lastUnixTimeCheck = Convert.ToInt32(((DateTimeOffset)(DateTime.UtcNow)).ToUnixTimeSeconds());
-            using (var tw = new StreamWriter("AxieData/LastTimeCheck.txt"))
-            {
-                tw.Write(lastUnixTimeCheck.ToString());
-            }
             string dataCountUrl = "https://api.axieinfinity.com/v1/battle/history/matches-count";
             string battleNumberPath = "AxieData/LastCheck.txt";
             int lastChecked = 0;
@@ -266,7 +253,7 @@ namespace AxieDataFetcher.BattleData
                             winner.win++;
                             winner.battleHistory += "1";
                         }
-                        else winrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", lastUnixTimeCheck));
+                        else winrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", LoopHandler.lastUnixTimeCheck));
 
                         var loser = winrateList.FirstOrDefault(a => a.id == losingTeam[i]);
                         if (loser != null)
@@ -274,7 +261,7 @@ namespace AxieDataFetcher.BattleData
                             loser.loss++;
                             loser.battleHistory += "0";
                         }
-                        else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", lastUnixTimeCheck));
+                        else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", LoopHandler.lastUnixTimeCheck));
                     }
                     if (!uniqueUsers.Contains((string)axieJson["winner"])) uniqueUsers.Add((string)axieJson["winner"]);
                     if (!uniqueUsers.Contains((string)axieJson["loser"])) uniqueUsers.Add((string)axieJson["loser"]);
@@ -283,7 +270,7 @@ namespace AxieDataFetcher.BattleData
             }
             foreach (var axie in winrateList) axie.GetWinrate();
             var db = DatabaseConnection.GetDb();
-            var collection = db.GetCollection<BsonDocument>("AxieWinrateTest");
+            var collection = db.GetCollection<BsonDocument>("AxieWinrate");
             Console.WriteLine("Initialising DB write phase");
             int dbPerc = 0;
             perc = (float)winrateList.Count / 100;
@@ -316,8 +303,8 @@ namespace AxieDataFetcher.BattleData
 
 
 
-            var collecDau = db.GetCollection<DailyUsers>("DailyBattleDAUTest");
-            var dailyData = new DailyUsers(lastUnixTimeCheck, uniqueUsers.Count);
+            var collecDau = db.GetCollection<DailyUsers>("DailyBattleDAU");
+            var dailyData = new DailyUsers(LoopHandler.lastUnixTimeCheck, uniqueUsers.Count);
             collecDau.InsertOne(dailyData);
 
 
@@ -325,8 +312,6 @@ namespace AxieDataFetcher.BattleData
             {
                 tw.Write((lastBattle - 1).ToString());
             }
-
-            IsDbSyncing = false;
         }
     }
 }

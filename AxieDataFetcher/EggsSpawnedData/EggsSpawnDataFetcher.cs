@@ -40,14 +40,16 @@ namespace AxieDataFetcher.EggsSpawnedData
 
         public static async Task GetAllEggsSpawnedData()
         {
-            int axieCount = 11000;
+            int axieCount = await GetAxieCount();
             int count = 1;
 
             int time = 0;
             int eggSpawned = 0;
             while (count < axieCount)
             {
-                var axieData = await AxieObjectV1.GetAxieFromApi(count);
+                Console.Clear();
+                Console.WriteLine(count);
+                var axieData = await AxieObjectOld.GetAxieFromApi(count);
                 if (time == 0) time = axieData.birthDate;
                 if(axieData.birthDate - time > 86400)
                 {
@@ -57,13 +59,16 @@ namespace AxieDataFetcher.EggsSpawnedData
                     time += 86400;
                 }
                 if(axieData.sireId != 0) eggSpawned++;
+                count++;
             }
+            KeyGetter.SetLastCheckedAxie(axieCount);
         }
 
         public static async Task GetEggsSpawnedFromCheckpoint()
         {
+            Console.WriteLine("Breeds per day init");
             var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggsPerDay");
-            var time = (await collec.FindAsync(d => true)).ToList().OrderBy( d => d.id).Last().id;
+            var time = LoopHandler.lastUnixTimeCheck;
             int count = KeyGetter.GetLastCheckedAxie();
             int axieCount = await GetAxieCount();
             int eggSpawned = 0;
