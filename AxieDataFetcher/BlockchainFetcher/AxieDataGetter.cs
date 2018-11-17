@@ -25,7 +25,7 @@ namespace AxieDataFetcher.BlockchainFetcher
         private static string AxieLabContractAddress = "0x99ff9f4257D5b6aF1400C994174EbB56336BB79F";
         private static string AxieExtraDataContract = "0x10e304a53351b272dc415ad049ad06565ebdfe34";
         #endregion
-        private static BigInteger lastBlockChecked = 6421665;
+        private static BigInteger lastBlockChecked = 5318592;
 
         //public static Queue<Task<IUserMessage>> messageQueue = new Queue<Task<IUserMessage>>();
 
@@ -185,21 +185,19 @@ namespace AxieDataFetcher.BlockchainFetcher
             var lastBlock = await GetLastBlockCheckpoint(web3);
             var firstBlock =new BlockParameter(new HexBigInteger(KeyGetter.GetLastCheckedBlock()));
 
-            //prepare filters CHANGE FIRST BLOCK
+            //prepare filters 
             var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(firstBlock, lastBlock);
             var auctionCancelledFilterAll = auctionCancelled.CreateFilterInput(firstBlock, lastBlock);
             var auctionCreationFilterAll = auctionCreatedEvent.CreateFilterInput(firstBlock, lastBlock);
             var labFilterAll = axieBoughtEvent.CreateFilterInput(firstBlock, lastBlock);
 
             //get logs from blockchain
-            //var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
+            var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
             //var auctionCancelledLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionCancelledEvent>(auctionFilterAll);
             var labLogs = await axieBoughtEvent.GetAllChanges<AxieBoughtEvent>(labFilterAll);
             //var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
 
-            int time = 0;
             int eggCount = 0;
-            int uniqueBuyers = 0;
 
             int perc = 0;
             int count = 0;
@@ -224,31 +222,121 @@ namespace AxieDataFetcher.BlockchainFetcher
                 //}
                 eggCount += log.Event.amount;
             }
-            //foreach (var log in auctionLogs)
-            //{
-            //    count++;
-            //    if (count > div)
-            //    {
-            //        perc++;
-            //        Console.Write($"{perc}%");
-            //        count = 0;
-            //    }
-            //    var blockParam = new BlockParameter(log.Log.BlockNumber);
-            //    var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(blockParam);
-            //    var blockTime = Convert.ToInt32(block.Timestamp.Value.ToString());
-            //    if (time == 0) time = blockTime;
-            //    if (blockTime - time > 86400)
-            //    {
-            //        var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
-            //        await collec.InsertOneAsync(new EggCount(time, eggCount));
-            //        eggCount = 0;
-            //        time = blockTime;
-            //    }
-            //    uniqueBuyers ++;
-            //}
+
+            var uniqueBuyers = await DbFetch.FetchUniqueBuyers();
+            var uniqueGains = 0;
+            foreach (var log in auctionLogs)
+            {
+                if (!uniqueBuyers.Contains(log.Event.winner))
+                {
+                    //await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniquerBuyers").InsertOneAsync(new UniqueBuyer(log.Event.winner));
+                    uniqueGains++;
+                }
+            }
+
+            //await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniquerBuyerGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
+
             var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
-            await collec.InsertOneAsync(new EggCount(time, eggCount));
+            await collec.InsertOneAsync(new EggCount(LoopHandler.lastUnixTimeCheck, eggCount));
             KeyGetter.SetLastCheckedBlock(lastBlock.BlockNumber.Value);
+            Console.WriteLine("Pods sync done.");
+        }
+
+        public static async Task FetchAllUniqueBuyers()
+        {
+            var web3 = new Web3("https://mainnet.infura.io");
+            var lastBlock = await GetLastBlockCheckpoint(web3);
+            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
+            var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
+            
+            var uniqueBuyers = new List<string>();
+            var lastBlockvalue = lastBlock.BlockNumber.Value;
+            while (lastBlockChecked < lastBlockvalue)
+            {
+                var latest = lastBlockChecked + 50000;
+                if (latest > lastBlockvalue)
+                    latest = lastBlockvalue;
+                var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), new BlockParameter(new HexBigInteger(latest)));
+                var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
+
+
+                foreach (var logs in auctionLogs)
+                {
+                    if (!uniqueBuyers.Contains(logs.Event.winner)) uniqueBuyers.Add(logs.Event.winner);
+                }
+                lastBlockChecked += 50000;
+            }
+            //var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueBuyers");
+            //foreach (var buyers in uniqueBuyers) await collec.InsertOneAsync(new UniqueBuyer(buyers));
+        }
+
+        public static async Task FetchCumulUniqueBuyers()
+        {
+            var web3 = new Web3("https://mainnet.infura.io");
+            var lastBlock = await GetLastBlockCheckpoint(web3);
+            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
+            var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
+
+            List<int> list = new List<int>();
+            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueBuyerGains");
+            var uniqueBuyers = new List<string>();
+            var uniqueGains = 0;
+            var initialTime = await GetBlockTimeStamp(lastBlockChecked, web3);
+            var lastBlockvalue = lastBlock.BlockNumber.Value;
+            while (lastBlockChecked < lastBlockvalue)
+            {
+                var latest = lastBlockChecked + 50000;
+                if (latest > lastBlockvalue)
+                    latest = lastBlockvalue;
+                var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), new BlockParameter(new HexBigInteger(latest)));
+                var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
+
+
+                foreach (var logs in auctionLogs)
+                {
+                    if (!uniqueBuyers.Contains(logs.Event.winner))
+                    {
+                        uniqueBuyers.Add(logs.Event.winner);
+                        uniqueGains++;
+                    }
+                    var logTime = await GetBlockTimeStamp(logs.Log.BlockNumber.Value, web3);
+                    if (logTime - initialTime > 86400)
+                    {
+                        var diff = logTime - initialTime;
+                        var mult = diff / 86400;
+                        if (mult > 1)
+                        {
+                            for (int i = 1; i < mult + 1; i++)
+                            {
+                                if(i == mult) await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + i * 86400, uniqueGains));
+                                else await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + i * 86400, 0));
+                                if (i == mult)
+                                    list.Add(uniqueGains);
+                                else
+                                    list.Add(0);
+                            }
+                        }
+                        else
+                        {
+                            await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + 86400, uniqueGains));
+                            list.Add(uniqueGains);
+                        }
+                        initialTime += 86400;
+                        uniqueGains = 0;
+                    }
+                }
+                lastBlockChecked += 50000;
+            }
+            var sum = list.Sum();
+            
+            await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + 86400, uniqueGains));
+        }
+
+        private static async Task<int> GetBlockTimeStamp(BigInteger number, Web3 web3)
+        {
+            var blockParam = new BlockParameter(new HexBigInteger(number));
+            var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(blockParam);
+            return Convert.ToInt32(block.Timestamp.Value.ToString());
         }
 
         private static async Task<BlockParameter> GetLastBlockCheckpoint(Web3 web3)

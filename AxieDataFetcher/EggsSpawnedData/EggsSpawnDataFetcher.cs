@@ -83,6 +83,7 @@ namespace AxieDataFetcher.EggsSpawnedData
             await collec.InsertOneAsync(new EggCount(Convert.ToInt32(((DateTimeOffset)(DateTime.UtcNow)).ToUnixTimeSeconds()), eggSpawned));
 
             KeyGetter.SetLastCheckedAxie(axieCount);
+            Console.WriteLine("Egg spawn sync done.");
         }
 
     }

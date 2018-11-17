@@ -23,7 +23,6 @@ namespace AxieDataFetcher.BattleData
 
     class WinrateCollector
     {
-        public static readonly int unixTimeBetweenUpdates = 86400;
         private static int updateCount = 0;
         public static void GetAllData()
         {
@@ -312,6 +311,8 @@ namespace AxieDataFetcher.BattleData
             {
                 tw.Write((lastBattle - 1).ToString());
             }
+            Console.WriteLine("Wr sync done.");
+            Console.Clear();
         }
     }
 }

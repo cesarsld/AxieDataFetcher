@@ -29,9 +29,9 @@ namespace AxieDataFetcher.Core
                     {
                         tw.Write(lastUnixTimeCheck.ToString());
                     }
-                    _ = WinrateCollector.GetWrSinceLastChack();
-                    _ = EggsSpawnDataFetcher.GetEggsSpawnedFromCheckpoint();
-                    _ = AxieDataGetter.FetchLogsSinceLastCheck();
+                    await EggsSpawnDataFetcher.GetEggsSpawnedFromCheckpoint();
+                    await AxieDataGetter.FetchLogsSinceLastCheck();
+                    await WinrateCollector.GetWrSinceLastChack();
                 }
 
                 await Task.Delay(60000);

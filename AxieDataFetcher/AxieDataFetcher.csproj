@@ -74,6 +74,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BlockchainFetcher\EggCount.cs" />
+    <Compile Include="BlockchainFetcher\UniqueBuyer.cs" />
+    <Compile Include="BlockchainFetcher\UniqueBuyerGain.cs" />
+    <Compile Include="Mongo\DbFetch.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="AxieObjects\AxieObjectOld.cs" />
     <Compile Include="AxieObjects\AxieObjectV1.cs" />
@@ -93,8 +96,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
-  <ItemGroup>
-    <Folder Include="EggsSpawnedData\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

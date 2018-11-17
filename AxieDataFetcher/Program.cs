@@ -16,6 +16,7 @@ namespace AxieDataFetcher
             
             Console.WriteLine("Hello World!");
             LoopHandler.UpdateServiceCheckLoop().GetAwaiter().GetResult();
+            //AxieDataGetter.FetchCumulUniqueBuyers().GetAwaiter().GetResult();
         }
     }
 }
