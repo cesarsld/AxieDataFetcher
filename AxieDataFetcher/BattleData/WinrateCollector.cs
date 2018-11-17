@@ -196,8 +196,10 @@ namespace AxieDataFetcher.BattleData
                 lastChecked = Convert.ToInt32(sr.ReadToEnd());
             }
             List<AxieWinrate> winrateList = new List<AxieWinrate>();
+            List<AxieWinrate> practiceWinrateList = new List<AxieWinrate>();
             int total = lastBattle - lastChecked;
             float perc = (float)total / 100;
+
             while (lastChecked < lastBattle)
             {
                 lastChecked++;
@@ -244,32 +246,58 @@ namespace AxieDataFetcher.BattleData
                         losingTeam = team1;
                         winningTeam = team2;
                     }
-                    for (int i = 0; i < 3; i++)
+                    if (axieJson["expUpdates"].Count() > 0)
                     {
-                        var winner = winrateList.FirstOrDefault(a => a.id == winningTeam[i]);
-                        if (winner != null)
+                        for (int i = 0; i < 3; i++)
                         {
-                            winner.win++;
-                            winner.battleHistory += "1";
-                        }
-                        else winrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", LoopHandler.lastUnixTimeCheck));
+                            var winner = winrateList.FirstOrDefault(a => a.id == winningTeam[i]);
+                            if (winner != null)
+                            {
+                                winner.win++;
+                                winner.battleHistory += "1";
+                            }
+                            else winrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", LoopHandler.lastUnixTimeCheck));
 
-                        var loser = winrateList.FirstOrDefault(a => a.id == losingTeam[i]);
-                        if (loser != null)
-                        {
-                            loser.loss++;
-                            loser.battleHistory += "0";
+                            var loser = winrateList.FirstOrDefault(a => a.id == losingTeam[i]);
+                            if (loser != null)
+                            {
+                                loser.loss++;
+                                loser.battleHistory += "0";
+                            }
+                            else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", LoopHandler.lastUnixTimeCheck));
                         }
-                        else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", LoopHandler.lastUnixTimeCheck));
+                    }
+                    else
+                    {
+                        for (int i = 0; i < 3; i++)
+                        {
+                            var winner = practiceWinrateList.FirstOrDefault(a => a.id == winningTeam[i]);
+                            if (winner != null)
+                            {
+                                winner.win++;
+                                winner.battleHistory += "1";
+                            }
+                            else practiceWinrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", LoopHandler.lastUnixTimeCheck));
+
+                            var loser = practiceWinrateList.FirstOrDefault(a => a.id == losingTeam[i]);
+                            if (loser != null)
+                            {
+                                loser.loss++;
+                                loser.battleHistory += "0";
+                            }
+                            else practiceWinrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", LoopHandler.lastUnixTimeCheck));
+                        }
                     }
                     if (!uniqueUsers.Contains((string)axieJson["winner"])) uniqueUsers.Add((string)axieJson["winner"]);
                     if (!uniqueUsers.Contains((string)axieJson["loser"])) uniqueUsers.Add((string)axieJson["loser"]);
+
 
                 }
             }
             foreach (var axie in winrateList) axie.GetWinrate();
             var db = DatabaseConnection.GetDb();
             var collection = db.GetCollection<BsonDocument>("AxieWinrate");
+            var practiceCollec = db.GetCollection<BsonDocument>("PracticeAxieWinrate");
             Console.WriteLine("Initialising DB write phase");
             int dbPerc = 0;
             perc = (float)winrateList.Count / 100;
@@ -299,7 +327,32 @@ namespace AxieDataFetcher.BattleData
                 }
                 else collection.InsertOne(axie.ToBsonDocument());             
             }
-
+            dbPerc = 0;
+            foreach (var axie in practiceWinrateList)
+            {
+                counter++;
+                if (counter > perc)
+                {
+                    dbPerc++;
+                    counter = 0;
+                    Console.WriteLine($"{dbPerc}%");
+                }
+                var filterId = Builders<BsonDocument>.Filter.Eq("_id", axie.id);
+                var doc = practiceCollec.Find(filterId).FirstOrDefault();
+                if (doc != null)
+                {
+                    var axieData = BsonSerializer.Deserialize<AxieWinrate>(doc);
+                    axieData.AddLatestResults(axie);
+                    var update = Builders<BsonDocument>.Update
+                                                       .Set("win", axieData.win)
+                                                       .Set("loss", axieData.loss)
+                                                       .Set("winrate", axieData.winrate)
+                                                       .Set("battleHistory", axieData.battleHistory)
+                                                       .Set("lastBattleDate", axieData.lastBattleDate);
+                    practiceCollec.UpdateOne(filterId, update);
+                }
+                else practiceCollec.InsertOne(axie.ToBsonDocument());
+            }
 
 
             var collecDau = db.GetCollection<DailyUsers>("DailyBattleDAU");

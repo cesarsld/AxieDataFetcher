@@ -229,12 +229,13 @@ namespace AxieDataFetcher.BlockchainFetcher
             {
                 if (!uniqueBuyers.Contains(log.Event.winner))
                 {
-                    //await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniquerBuyers").InsertOneAsync(new UniqueBuyer(log.Event.winner));
+                    uniqueBuyers.Add(log.Event.winner);
+                    await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniquerBuyers").InsertOneAsync(new UniqueBuyer(log.Event.winner));
                     uniqueGains++;
                 }
             }
 
-            //await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniquerBuyerGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
+            await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniquerBuyerGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
 
             var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
             await collec.InsertOneAsync(new EggCount(LoopHandler.lastUnixTimeCheck, eggCount));
@@ -266,8 +267,8 @@ namespace AxieDataFetcher.BlockchainFetcher
                 }
                 lastBlockChecked += 50000;
             }
-            //var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueBuyers");
-            //foreach (var buyers in uniqueBuyers) await collec.InsertOneAsync(new UniqueBuyer(buyers));
+            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueBuyers");
+            foreach (var buyers in uniqueBuyers) await collec.InsertOneAsync(new UniqueBuyer(buyers));
         }
 
         public static async Task FetchCumulUniqueBuyers()
@@ -308,20 +309,22 @@ namespace AxieDataFetcher.BlockchainFetcher
                         {
                             for (int i = 1; i < mult + 1; i++)
                             {
-                                if(i == mult) await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + i * 86400, uniqueGains));
-                                else await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + i * 86400, 0));
+                                if(i == mult)
+                                    await collec.InsertOneAsync(new UniqueBuyerGain(initialTime, uniqueGains));
+                                else await collec.InsertOneAsync(new UniqueBuyerGain(initialTime, 0));
                                 if (i == mult)
                                     list.Add(uniqueGains);
                                 else
                                     list.Add(0);
+                                initialTime += 86400;
                             }
                         }
                         else
                         {
-                            await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + 86400, uniqueGains));
+                            await collec.InsertOneAsync(new UniqueBuyerGain(initialTime, uniqueGains));
                             list.Add(uniqueGains);
+                            initialTime += 86400;
                         }
-                        initialTime += 86400;
                         uniqueGains = 0;
                     }
                 }
