@@ -230,12 +230,12 @@ namespace AxieDataFetcher.BlockchainFetcher
                 if (!uniqueBuyers.Contains(log.Event.winner))
                 {
                     uniqueBuyers.Add(log.Event.winner);
-                    await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniquerBuyers").InsertOneAsync(new UniqueBuyer(log.Event.winner));
+                    await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueBuyers").InsertOneAsync(new UniqueBuyer(log.Event.winner));
                     uniqueGains++;
                 }
             }
 
-            await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniquerBuyerGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
+            await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueBuyerGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
 
             var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
             await collec.InsertOneAsync(new EggCount(LoopHandler.lastUnixTimeCheck, eggCount));
