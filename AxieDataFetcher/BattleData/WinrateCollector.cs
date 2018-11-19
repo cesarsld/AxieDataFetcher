@@ -225,7 +225,7 @@ namespace AxieDataFetcher.BattleData
             if (battleCount > 0) await DatabaseConnection.GetDb().GetCollection<DailyBattles>("CumulDailyBattles").InsertOneAsync(new DailyBattles(LoopHandler.lastUnixTimeCheck, battleCount));
         }
 
-        public static async Task GetWrSinceLastChack()
+        public static async Task GetBattleDataSinceLastCheck()
         {
             Console.WriteLine("WR per day init");
             List<string> uniqueUsers = new List<string>();

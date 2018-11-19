@@ -32,7 +32,7 @@ namespace AxieDataFetcher.Core
                     }
                     await EggsSpawnDataFetcher.GetEggsSpawnedFromCheckpoint();
                     await AxieDataGetter.FetchLogsSinceLastCheck();
-                    await WinrateCollector.GetWrSinceLastChack();
+                    await WinrateCollector.GetBattleDataSinceLastCheck();
                 }
 
                 await Task.Delay(60000);

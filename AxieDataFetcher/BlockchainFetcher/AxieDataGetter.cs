@@ -27,145 +27,8 @@ namespace AxieDataFetcher.BlockchainFetcher
         #endregion
         private static BigInteger lastBlockChecked = 5318592;
 
-        //public static Queue<Task<IUserMessage>> messageQueue = new Queue<Task<IUserMessage>>();
 
         public static bool IsServiceOn = true;
-        public AxieDataGetter()
-        {
-        }
-
-        public static async Task<AxieExtraData> GetExtraData(int axieId)
-        {
-            var web3 = new Web3("https://mainnet.infura.io");
-            var ownerDataContract = web3.Eth.GetContract(KeyGetter.GetABI("onwerDataABI"), AxieExtraDataContract);
-            var getExtraFunction = ownerDataContract.GetFunction("getExtra");
-            try
-            {
-                var result = await getExtraFunction.CallDeserializingToObjectAsync<AxieExtraData>(new BigInteger(axieId));
-                return result;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-                Console.ReadLine();
-            }
-            return null;
-        }
-
-        public static async Task<AxieExtraData> test(int axieId)
-        {
-            var web3 = new Web3("https://mainnet.infura.io");
-            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
-            var getSellerInfoFunction = auctionContract.GetFunction("getAuction");
-            try
-            {
-                var lastBlock = await GetLastBlockCheckpoint(web3);
-                var firstBlock = GetInitialBlockCheckpoint(lastBlock.BlockNumber);
-                object[] input = new object[2];
-                input[0] = NftAddress;
-                input[1] = new BigInteger(axieId);
-                var result = await getSellerInfoFunction.CallDeserializingToObjectAsync<SellerInfo>(firstBlock, input);
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-                Console.ReadLine();
-            }
-            return null;
-        }
-
-        public static async Task GetData()
-        {
-            IsServiceOn = true;
-            //_ = TaskHandler.UpdateServiceCheckLoop();
-            var web3 = new Web3("https://mainnet.infura.io");
-            //get contracts
-            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
-            var getSellerInfoFunction = auctionContract.GetFunction("getAuction");
-            var labContract = web3.Eth.GetContract(KeyGetter.GetABI("labABI"), AxieLabContractAddress);
-            //get events
-            var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
-            var auctionCreatedEvent = auctionContract.GetEvent("AuctionCreated");
-            var axieBoughtEvent = labContract.GetEvent("AxieBought");
-            var auctionCancelled = auctionContract.GetEvent("AuctionCancelled");
-
-            //set block range search
-            var lastBlock = await GetLastBlockCheckpoint(web3);
-            var firstBlock = GetInitialBlockCheckpoint(lastBlock.BlockNumber);
-            while (IsServiceOn)
-            {
-                try
-                {
-                    //prepare filters
-                    var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(firstBlock, lastBlock);
-                    var auctionCancelledFilterAll = auctionCancelled.CreateFilterInput(firstBlock, lastBlock);
-                    var auctionCreationFilterAll = auctionCreatedEvent.CreateFilterInput(firstBlock, lastBlock);
-                    var labFilterAll = axieBoughtEvent.CreateFilterInput(firstBlock, lastBlock);
-
-                    //get logs from blockchain
-                    var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
-                    var auctionCancelledLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionCancelledEvent>(auctionFilterAll);
-                    var labLogs = await axieBoughtEvent.GetAllChanges<AxieBoughtEvent>(labFilterAll);
-                    var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
-
-                    BigInteger latestLogBlock = 0;
-                    //read logs
-                    //if (auctionCancelledLogs != null && auctionCancelledLogs.Count > 0) _ = HandleAuctionCancelTriggers(auctionCancelledLogs);
-
-                    if (auctionCreationLogs != null && auctionCreationLogs.Count > 0)
-                    {
-
-                        foreach (var log in auctionCreationLogs)
-                        {
-                            var axie = await AxieObjectV1.GetAxieFromApi(Convert.ToInt32(log.Event.tokenId.ToString()));
-                            var price = log.Event.startingPrice;
-                            await axie.GetTrueAuctionData();
-                        }
-                    }
-
-                    if (auctionLogs != null && auctionLogs.Count > 0)
-                    {
-                        foreach (var log in auctionLogs)
-                        {
-                            latestLogBlock = log.Log.BlockNumber.Value;
-                            int axieId = Convert.ToInt32(log.Event.tokenId.ToString());
-                            float priceinEth = Convert.ToSingle(Nethereum.Util.UnitConversion.Convert.FromWei(log.Event.totalPrice).ToString());
-                            object[] input = new object[2];
-                            input[0] = NftAddress;
-                            input[1] = log.Event.tokenId;
-                            var sellerInfo = await getSellerInfoFunction.CallDeserializingToObjectAsync<SellerInfo>(
-                                new BlockParameter(new HexBigInteger(log.Log.BlockNumber.Value - 1)), input);
-
-                        };
-                        Console.WriteLine("End of batch");
-                    }
-                    if (labLogs != null && labLogs.Count > 0)
-                    {
-                        foreach (var log in labLogs)
-                        {
-                            latestLogBlock = log.Log.BlockNumber.Value;
-                            float priceinEth = Convert.ToSingle(Nethereum.Util.UnitConversion.Convert.FromWei(log.Event.price).ToString());
-                            int amount = log.Event.amount;
-                            
-                        };
-                        Console.WriteLine("End of batch");
-                    }
-                    await Task.Delay(60000);
-                    if (latestLogBlock > lastBlock.BlockNumber.Value) firstBlock = new BlockParameter(new HexBigInteger(latestLogBlock + 1));
-                    else firstBlock = new BlockParameter(new HexBigInteger(lastBlock.BlockNumber.Value + 1));
-                    lastBlock = await GetLastBlockCheckpoint(web3);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
-                    //Logger.Log(ex.ToString());
-                    IsServiceOn = false;
-                    break;
-                }
-
-            }
-        }
 
         public static async Task FetchLogsSinceLastCheck()
         {
@@ -199,27 +62,8 @@ namespace AxieDataFetcher.BlockchainFetcher
 
             int eggCount = 0;
 
-            int perc = 0;
-            int count = 0;
-            int div = labLogs.Count / 100;
             foreach (var log in labLogs)
             {
-                count++;
-                if (count > div)
-                {
-                    perc++;
-                    Console.WriteLine($"{perc}%");
-                    count = 0;
-                }
-                //var blockParam = new BlockParameter(log.Log.BlockNumber);
-                //var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(blockParam);
-                //var blockTime = Convert.ToInt32(block.Timestamp.Value.ToString());
-                //if (time == 0) time = blockTime;
-                //if (blockTime - time > 86400)
-                //{
-                //    eggCount = 0;
-                //    time = blockTime;
-                //}
                 eggCount += log.Event.amount;
             }
 
