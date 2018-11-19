@@ -175,7 +175,55 @@ namespace AxieDataFetcher.BattleData
             
         }
 
-
+        public static async Task GetCumulBattleCount()
+        {
+            string dataCountUrl = "https://api.axieinfinity.com/v1/battle/history/matches-count";
+            int lastChecked = 0;
+            int lastBattle = 0;
+            int apiPerc = 0;
+            int counter = 0;
+            int battleCount = 0;
+            int timeCheck = 0;
+            using (System.Net.WebClient wc = new System.Net.WebClient())
+            {
+                lastBattle = Convert.ToInt32((await wc.DownloadStringTaskAsync(dataCountUrl)));
+            }
+            float perc = (float)lastBattle / 100;
+            while (lastChecked < lastBattle)
+            {
+                lastChecked++;
+                counter++;
+                if (counter > perc)
+                {
+                    apiPerc++;
+                    counter = 0;
+                    Console.WriteLine($"{apiPerc}%");
+                }
+                string json = null;
+                try
+                {
+                    using (System.Net.WebClient wc = new System.Net.WebClient())
+                    {
+                        json = wc.DownloadString("https://api.axieinfinity.com/v1/battle/history/matches/" + lastChecked.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+                JObject axieJson = JObject.Parse(json);
+                battleCount++;
+                int time = Convert.ToInt32(((string)axieJson["createdAt"]).Remove(((string)axieJson["createdAt"]).Length - 3, 3));
+                if (timeCheck == 0) timeCheck = time;
+                if (time - timeCheck > 86400)
+                {
+                    await DatabaseConnection.GetDb().GetCollection<DailyBattles>("CumulDailyBattles").InsertOneAsync(new DailyBattles(timeCheck, battleCount));
+                    battleCount = 0;
+                    timeCheck += 86400;
+                }
+            }
+            if (battleCount > 0) await DatabaseConnection.GetDb().GetCollection<DailyBattles>("CumulDailyBattles").InsertOneAsync(new DailyBattles(LoopHandler.lastUnixTimeCheck, battleCount));
+        }
 
         public static async Task GetWrSinceLastChack()
         {
@@ -187,6 +235,7 @@ namespace AxieDataFetcher.BattleData
             int lastBattle = 0;
             int apiPerc = 0;
             int counter = 0;
+            int battleCount = 0;
             using (System.Net.WebClient wc = new System.Net.WebClient())
             {
                 lastBattle = Convert.ToInt32((await wc.DownloadStringTaskAsync(dataCountUrl)));
@@ -224,6 +273,7 @@ namespace AxieDataFetcher.BattleData
                 }
                 if (json != null)
                 {
+                    battleCount++;
                     JObject axieJson = JObject.Parse(json);
                     JObject script = JObject.Parse((string)axieJson["script"]);
                     int[] team1 = new int[3];
@@ -357,8 +407,8 @@ namespace AxieDataFetcher.BattleData
 
             var collecDau = db.GetCollection<DailyUsers>("DailyBattleDAU");
             var dailyData = new DailyUsers(LoopHandler.lastUnixTimeCheck, uniqueUsers.Count);
-            collecDau.InsertOne(dailyData);
-
+            await  collecDau.InsertOneAsync(dailyData);
+            await db.GetCollection<DailyBattles>("CumulDailyBattles").InsertOneAsync(new DailyBattles(LoopHandler.lastUnixTimeCheck, battleCount));
 
             using (var tw = new StreamWriter(battleNumberPath))
             {

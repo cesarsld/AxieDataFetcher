@@ -17,4 +17,16 @@ namespace AxieDataFetcher.BattleData
             Count = _count;
         }
     }
+
+    class DailyBattles
+    {
+        public int id;
+        public int Count;
+
+        public DailyBattles(int _id, int _count)
+        {
+            id = _id;
+            Count = _count;
+        }
+    }
 }
