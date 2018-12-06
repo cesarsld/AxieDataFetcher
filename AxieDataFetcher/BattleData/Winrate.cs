@@ -15,6 +15,7 @@ namespace AxieDataFetcher.BattleData
         public string battleHistory;
         public int mysticCount;
         public int lastBattleDate;
+        public string[] moves;
         public AxieWinrate()
         { }
         public AxieWinrate(int _id, int _win, int _loss, string history, int date)

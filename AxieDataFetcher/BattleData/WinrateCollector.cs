@@ -375,7 +375,27 @@ namespace AxieDataFetcher.BattleData
                                                        .Set("lastBattleDate", axieData.lastBattleDate);
                     collection.UpdateOne(filterId, update);
                 }
-                else collection.InsertOne(axie.ToBsonDocument());             
+                else
+                {
+                    var data = await AxieObjectOld.GetAxieFromApi(axie.id);
+                    axie.moves = new string[4];
+                    var index = 0;
+                    foreach (var move in data.parts)
+                    {
+                        switch (move.type)
+                        {
+                            case "mouth":
+                            case "back":
+                            case "horn":
+                            case "tail":
+                                axie.moves[index] = move.name;
+                                index++;
+                                break;
+
+                        }
+                    }
+                    collection.InsertOne(axie.ToBsonDocument());
+                }
             }
             dbPerc = 0;
             foreach (var axie in practiceWinrateList)
