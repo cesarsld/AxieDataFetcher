@@ -44,9 +44,9 @@ namespace AxieDataFetcher.BattleData
 
         private void TrimHistory()
         {
-            if (battleHistory.Length > 44)
+            if (battleHistory.Length > 102)
             {
-                battleHistory = battleHistory.Remove(2, battleHistory.Length - 44);
+                battleHistory = battleHistory.Remove(2, battleHistory.Length - 102);
             }
         }
 
