@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace AxieDataFetcher.AxieObjects
 {
-    class AxieObjectOld
+    public class AxieObjectOld
     {
         public int id;
         public int birthDate;

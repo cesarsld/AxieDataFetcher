@@ -7,6 +7,7 @@ using AxieDataFetcher.BlockchainFetcher;
 using AxieDataFetcher.EggsSpawnedData;
 using AxieDataFetcher.Core;
 using AxieDataFetcher.BattleData;
+using AxieDataFetcher.MultiThreading;
 
 namespace AxieDataFetcher
 {
@@ -17,10 +18,10 @@ namespace AxieDataFetcher
             
             Console.WriteLine("Hello World!");
             //WinrateCollector.GetCumulBattleCount().GetAwaiter().GetResult();
-            WinrateCollector.GetBattleDataSinceLastCheck().GetAwaiter().GetResult();
+            //inrateCollector.GetBattleDataSinceLastCheck().GetAwaiter().GetResult();
             //LoopHandler.UpdateServiceCheckLoop().GetAwaiter().GetResult();
+            new MultiThreadHandler().MultiThreadLogFetchAll(200);
             //AxieDataGetter.FetchCumulUniqueBuyers().GetAwaiter().GetResult();
         }
     }
 }
-

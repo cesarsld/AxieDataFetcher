@@ -30,6 +30,72 @@ namespace AxieDataFetcher.BlockchainFetcher
 
         public static bool IsServiceOn = true;
 
+        public static async Task FetchAuctionData()
+        {
+            var web3 = new Web3("https://mainnet.infura.io");
+            //get contracts
+            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
+            
+            //get events
+            var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
+            var auctionCreatedEvent = auctionContract.GetEvent("AuctionCreated");
+            var auctionCancelled = auctionContract.GetEvent("AuctionCancelled");
+
+            //set block range
+            var lastBlock = await GetLastBlockCheckpoint(web3);
+            var firstBlock = GetInitialBlockCheckpoint(lastBlock.BlockNumber);
+            while (IsServiceOn)
+            {
+                try
+                {
+                    //prepare filters
+                    var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(firstBlock, lastBlock);
+                    var auctionCancelledFilterAll = auctionCancelled.CreateFilterInput(firstBlock, lastBlock);
+                    var auctionCreationFilterAll = auctionCreatedEvent.CreateFilterInput(firstBlock, lastBlock);
+
+                    //get logs from blockchain
+                    var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
+                    var auctionCancelledLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionCancelledEvent>(auctionFilterAll);
+                    var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
+
+                    if (auctionCancelledLogs != null && auctionCancelledLogs.Count > 0)
+                    {
+                        foreach (var cancel in auctionCancelledLogs)
+                        {
+                            //remove from DB
+                            await MarketplaceDatabase.RemoveAxie(Convert.ToInt32(cancel.Event.tokenId.ToString()));
+                        }
+                    }
+                    if (auctionLogs != null && auctionLogs.Count > 0)
+                    {
+                        foreach (var success in auctionLogs)
+                        {
+                            //remove from DB
+                            await MarketplaceDatabase.RemoveAxie(Convert.ToInt32(success.Event.tokenId.ToString()));
+                        }
+                    }
+
+                    if (auctionCreationLogs != null && auctionCreationLogs.Count > 0)
+                    {
+
+                        foreach (var log in auctionCreationLogs)
+                        {
+                            //add to DB
+                            await MarketplaceDatabase.AddNewAxie(Convert.ToInt32(log.Event.tokenId.ToString()));
+                        }
+                    }
+                    await Task.Delay(60000);
+                    firstBlock = new BlockParameter(new HexBigInteger(lastBlock.BlockNumber.Value + 1));
+                    lastBlock = await GetLastBlockCheckpoint(web3);
+                }
+                catch
+                {
+                    IsServiceOn = false;
+                }
+            }
+        }
+
+
         public static async Task FetchLogsSinceLastCheck()
         {
             Console.WriteLine("Pods per day init");

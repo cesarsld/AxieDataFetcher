@@ -16,9 +16,14 @@ namespace AxieDataFetcher.BattleData
         public int mysticCount;
         public int lastBattleDate;
         public string[] moves;
+
+        public List<long> wonBattles;
+        public List<long> lostBattles;
+
+
         public AxieWinrate()
         { }
-        public AxieWinrate(int _id, int _win, int _loss, string history, int date)
+        public AxieWinrate(int _id, int _win, int _loss, string history, int date, int battleId, bool outcome)
         {
             id = _id;
             win = _win;
@@ -26,6 +31,10 @@ namespace AxieDataFetcher.BattleData
             battleHistory = history;
             mysticCount = 0;
             lastBattleDate = date;
+            wonBattles = new List<long>();
+            lostBattles = new List<long>();
+            if (outcome) wonBattles.Add(battleId);
+            else lostBattles.Add(battleId);
         }
         public void GetWinrate()
         {
@@ -39,6 +48,8 @@ namespace AxieDataFetcher.BattleData
             GetWinrate();
             battleHistory += winrate.battleHistory.Substring(2);
             lastBattleDate = winrate.lastBattleDate;
+            wonBattles.AddRange(winrate.wonBattles);
+            lostBattles.AddRange(winrate.lostBattles);
             TrimHistory();
         }
 

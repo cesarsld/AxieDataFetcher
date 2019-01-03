@@ -76,7 +76,10 @@
     <Compile Include="BlockchainFetcher\EggCount.cs" />
     <Compile Include="BlockchainFetcher\UniqueBuyer.cs" />
     <Compile Include="BlockchainFetcher\UniqueBuyerGain.cs" />
+    <Compile Include="MarketPlaceDatabase\ApiCalls.cs" />
     <Compile Include="Mongo\DbFetch.cs" />
+    <Compile Include="Mongo\MarketplaceDatabase.cs" />
+    <Compile Include="MultiThreading\MultiThreadHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="AxieObjects\AxieObjectOld.cs" />
     <Compile Include="AxieObjects\AxieObjectV1.cs" />
