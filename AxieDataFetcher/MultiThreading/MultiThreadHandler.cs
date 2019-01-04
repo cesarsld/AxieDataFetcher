@@ -35,7 +35,7 @@ namespace AxieDataFetcher.MultiThreading
         public void MultiThreadLogFetchAll(int length)
         {
             perc = length / 100;
-            Parallel.For(1, length, new ParallelOptions { MaxDegreeOfParallelism = /*Environment.ProcessorCount*/ 1 }, (x, state) =>
+            Parallel.For(1, length, new ParallelOptions { MaxDegreeOfParallelism = /*Environment.ProcessorCount*/ 4 }, (x, state) =>
             {
                 WinrateCollector.GetBattleLogsData(x, UpdateWinrates);
 
@@ -54,12 +54,13 @@ namespace AxieDataFetcher.MultiThreading
                         match.AddLatestResults(wr);
                     else
                         winrateList.Add(wr);
-                    
+
                 }
                 battleCount++;
-                if (battleCount > perc)
+                if (battleCount >= perc)
                 {
                     actualPerc++;
+                    battleCount = 0;
                     Console.WriteLine($"{actualPerc}%");
                 }
             }
