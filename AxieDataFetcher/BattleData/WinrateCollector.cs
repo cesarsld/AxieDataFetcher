@@ -124,7 +124,7 @@ namespace AxieDataFetcher.BattleData
             }
         }
 
-        public static void GetBattleLogsData(int battleId, Action<List<AxieWinrate>> updateList)
+        public static void GetBattleLogsData(int battleId, Action<List<AxieWinrate>> updateList, Action<List<AxieWinrate>> updatePracticeList)
         {
             Dictionary<int, Winrate> winrateData = new Dictionary<int, Winrate>();
             List<AxieWinrate> winrateList = new List<AxieWinrate>();
@@ -187,7 +187,12 @@ namespace AxieDataFetcher.BattleData
                     }
                     else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", time, battleId, false));
                 }
-                updateList(winrateList);
+                if (axieJson["expUpdates"] == null )
+                    updateList(winrateList);
+                else if (axieJson["expUpdates"].Count()  > 0)
+                    updateList(winrateList);
+                else
+                    updatePracticeList(winrateList);
             }
         }
 
