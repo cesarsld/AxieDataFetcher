@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Net.Http;
+using System.Net;
 using System.Collections.Generic;
 using Nethereum.Web3;
 using Nethereum.ABI.FunctionEncoding.Attributes;
@@ -11,6 +13,10 @@ using Nethereum.Hex.HexTypes;
 using Newtonsoft.Json.Linq;
 using AxieDataFetcher.AxieObjects;
 using Nethereum.Util;
+using Nethereum.Web3.Accounts;
+using Nethereum.Contracts.CQS;
+using Newtonsoft.Json;
+//using Nethereum.Contracts.Extensions;
 using System.Linq;
 using AxieDataFetcher.Core;
 using AxieDataFetcher.Mongo;
@@ -30,12 +36,66 @@ namespace AxieDataFetcher.BlockchainFetcher
 
         public static bool IsServiceOn = true;
 
+        public static async Task<HexBigInteger> GetSafeLowGas()
+        {
+            var json = "";
+            using (System.Net.WebClient wc = new System.Net.WebClient())
+            {
+                json = await wc.DownloadStringTaskAsync("https://api.axieinfinity.com/v1/gas-price");
+            }
+            return new HexBigInteger(BigInteger.Parse((string)JObject.Parse(json)["safeLow"]));
+        }
+
+        public static async Task<HexBigInteger> GetStandardGas()
+        {
+            var json = "";
+            using (System.Net.WebClient wc = new System.Net.WebClient())
+            {
+                json = await wc.DownloadStringTaskAsync("https://api.axieinfinity.com/v1/gas-price");
+            }
+            return new HexBigInteger(BigInteger.Parse((string)JObject.Parse(json)["standard"]));
+        }
+
+        public static async Task TestBid()
+        {
+            var myPassword = "";
+            var account = new Account(myPassword);
+            var web3 = new Web3(account, "https://mainnet.infura.io");
+            var gasPrice = await web3.Eth.GasPrice.SendRequestAsync();
+            object[] input = new object[2];
+            input[0] = NftAddress;
+            input[1] = new BigInteger(18095);
+
+            var safeLow = await GetSafeLowGas();
+            //get contract
+            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
+
+            //get payable function
+            var bidFunction = auctionContract.GetFunction("bid");
+
+            var value = new HexBigInteger(UnitConversion.Convert.ToWei(0.0163));
+            var estimateGas = await bidFunction.EstimateGasAsync(account.Address, new HexBigInteger(8000000), new HexBigInteger(value), input[0], input[1]);
+            Console.WriteLine($"Bid ID {input[1]} using {estimateGas.Value} gas");
+            try
+            {
+                var tx = await bidFunction.SendTransactionAsync(account.Address, estimateGas, safeLow, value, input[0], input[1]);
+                Console.WriteLine($"TX : {tx}");
+                Console.ReadLine();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                Console.ReadLine();
+            }
+        }
+
+
         public static async Task FetchAuctionData()
         {
             var web3 = new Web3("https://mainnet.infura.io");
             //get contracts
             var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
-            
+
             //get events
             var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
             var auctionCreatedEvent = auctionContract.GetEvent("AuctionCreated");
@@ -112,7 +172,7 @@ namespace AxieDataFetcher.BlockchainFetcher
 
             //set block range search
             var lastBlock = await GetLastBlockCheckpoint(web3);
-            var firstBlock =new BlockParameter(new HexBigInteger(KeyGetter.GetLastCheckedBlock()));
+            var firstBlock = new BlockParameter(new HexBigInteger(KeyGetter.GetLastCheckedBlock()));
 
             //prepare filters 
             var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(firstBlock, lastBlock);
@@ -159,7 +219,7 @@ namespace AxieDataFetcher.BlockchainFetcher
             var lastBlock = await GetLastBlockCheckpoint(web3);
             var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
             var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
-            
+
             var uniqueBuyers = new List<string>();
             var lastBlockvalue = lastBlock.BlockNumber.Value;
             while (lastBlockChecked < lastBlockvalue)
@@ -219,7 +279,7 @@ namespace AxieDataFetcher.BlockchainFetcher
                         {
                             for (int i = 1; i < mult + 1; i++)
                             {
-                                if(i == mult)
+                                if (i == mult)
                                     await collec.InsertOneAsync(new UniqueBuyerGain(initialTime, uniqueGains));
                                 else await collec.InsertOneAsync(new UniqueBuyerGain(initialTime, 0));
                                 if (i == mult)
@@ -241,7 +301,7 @@ namespace AxieDataFetcher.BlockchainFetcher
                 lastBlockChecked += 50000;
             }
             var sum = list.Sum();
-            
+
             await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + 86400, uniqueGains));
         }
 
@@ -376,4 +436,12 @@ namespace AxieDataFetcher.BlockchainFetcher
 
     }
 
+    [Function("bid")]
+    public class BidFunction
+    {
+        [Parameter("address", "_nftAddress", 1)]
+        public string address { get; set; }
+        [Parameter("uint256", "_tokenId", 1)]
+        public BigInteger tokenId { get; set; }
+    }
 }

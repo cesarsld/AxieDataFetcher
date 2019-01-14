@@ -19,9 +19,10 @@ namespace AxieDataFetcher
             Console.WriteLine("Hello World!");
             //WinrateCollector.GetCumulBattleCount().GetAwaiter().GetResult();
             //inrateCollector.GetBattleDataSinceLastCheck().GetAwaiter().GetResult();
-            LoopHandler.UpdateServiceCheckLoop().GetAwaiter().GetResult();
-
+            //LoopHandler.UpdateServiceCheckLoop().GetAwaiter().GetResult();
+            //444542
             //AxieDataGetter.FetchCumulUniqueBuyers().GetAwaiter().GetResult();
+            //AxieDataGetter.TestBid().GetAwaiter().GetResult();
         }
     }
 }

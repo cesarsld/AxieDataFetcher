@@ -88,9 +88,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AxieObjects\AxieCustomData.cs" />
     <Compile Include="BlockchainFetcher\EggCount.cs" />
     <Compile Include="BlockchainFetcher\UniqueBuyer.cs" />
     <Compile Include="BlockchainFetcher\UniqueBuyerGain.cs" />
+    <Compile Include="Enums.cs" />
     <Compile Include="MarketPlaceDatabase\ApiCalls.cs" />
     <Compile Include="Mongo\DbFetch.cs" />
     <Compile Include="Mongo\MarketplaceDatabase.cs" />
