@@ -56,7 +56,7 @@ namespace AxieDataFetcher.BlockchainFetcher
             return new HexBigInteger(BigInteger.Parse((string)JObject.Parse(json)["standard"]));
         }
 
-        public static async Task TestBid()
+        public static async Task BuyAxie(HexBigInteger axieId, HexBigInteger price)
         {
             var myPassword = "";
             var account = new Account(myPassword);
@@ -72,13 +72,11 @@ namespace AxieDataFetcher.BlockchainFetcher
 
             //get payable function
             var bidFunction = auctionContract.GetFunction("bid");
-
-            var value = new HexBigInteger(UnitConversion.Convert.ToWei(0.0163));
-            var estimateGas = await bidFunction.EstimateGasAsync(account.Address, new HexBigInteger(8000000), new HexBigInteger(value), input[0], input[1]);
+            var estimateGas = await bidFunction.EstimateGasAsync(account.Address, new HexBigInteger(8000000), price, NftAddress, axieId);
             Console.WriteLine($"Bid ID {input[1]} using {estimateGas.Value} gas");
             try
             {
-                var tx = await bidFunction.SendTransactionAsync(account.Address, estimateGas, safeLow, value, input[0], input[1]);
+                var tx = await bidFunction.SendTransactionAsync(account.Address, estimateGas, safeLow, price, input[0], input[1]);
                 Console.WriteLine($"TX : {tx}");
                 Console.ReadLine();
             }
@@ -89,6 +87,14 @@ namespace AxieDataFetcher.BlockchainFetcher
             }
         }
 
+        public static async Task CheckIfShouldBuy(EventLog<AuctionCreatedEvent> auction)
+        {
+            //1 eth is 1 000 000 000 000 000 000 wie
+            var currentPrice = auction.Event.startingPrice;
+
+            if (currentPrice < BigInteger.Parse("1 000 000 000 000 000 000"))
+            { }
+        }
 
         public static async Task FetchAuctionData()
         {
@@ -124,6 +130,8 @@ namespace AxieDataFetcher.BlockchainFetcher
                         {
                             //remove from DB
                             await MarketplaceDatabase.RemoveAxie(Convert.ToInt32(cancel.Event.tokenId.ToString()));
+
+                            //remove market trigger
                         }
                     }
                     if (auctionLogs != null && auctionLogs.Count > 0)
@@ -132,6 +140,9 @@ namespace AxieDataFetcher.BlockchainFetcher
                         {
                             //remove from DB
                             await MarketplaceDatabase.RemoveAxie(Convert.ToInt32(success.Event.tokenId.ToString()));
+
+                            //remove market triggers
+
                         }
                     }
 
@@ -142,6 +153,8 @@ namespace AxieDataFetcher.BlockchainFetcher
                         {
                             //add to DB
                             await MarketplaceDatabase.AddNewAxie(Convert.ToInt32(log.Event.tokenId.ToString()));
+                            //check if should buy now or later
+                            await CheckIfShouldBuy(log);
                         }
                     }
                     await Task.Delay(60000);
