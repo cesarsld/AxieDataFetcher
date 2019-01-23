@@ -23,5 +23,14 @@ namespace AxieDataFetcher.Mongo
             foreach (var buyer in data) list.Add(buyer.id);
             return list;
         }
+
+        public static async Task<List<string>> FetchUniqueLandHolders()
+        {
+            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders");
+            var data = (await collec.FindAsync(a => true)).ToList();
+            List<string> list = new List<string>();
+            foreach (var buyer in data) list.Add(buyer.id);
+            return list;
+        }
     }
 }

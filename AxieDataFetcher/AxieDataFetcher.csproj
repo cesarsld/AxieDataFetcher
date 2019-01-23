@@ -110,6 +110,8 @@
     <Compile Include="Mongo\DatabaseConnection.cs" />
     <Compile Include="EggsSpawnedData\EggsSpawnDataFetcher.cs" />
     <Compile Include="EggsSpawnedData\EggCount.cs" />
+    <Compile Include="Mongo\Utils.cs" />
+    <Compile Include="BlockchainFetcher\LandCount.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

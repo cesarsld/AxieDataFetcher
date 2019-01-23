@@ -26,10 +26,12 @@ namespace AxieDataFetcher.BlockchainFetcher
     {
 
         #region ABI & contract declaration
+
         private static string AxieCoreContractAddress = "0xF4985070Ce32b6B1994329DF787D1aCc9a2dd9e2";
         private static string NftAddress = "0xf5b0a3efb8e8e4c201e2a935f110eaaf3ffecb8d";
         private static string AxieLabContractAddress = "0x99ff9f4257D5b6aF1400C994174EbB56336BB79F";
         private static string AxieExtraDataContract = "0x10e304a53351b272dc415ad049ad06565ebdfe34";
+        private static string AxieLandPresaleContract = "0x7a11462A2adAed5571b91e34a127E4cbF51b152c";
         #endregion
         private static BigInteger lastBlockChecked = 5318592;
 
@@ -177,11 +179,13 @@ namespace AxieDataFetcher.BlockchainFetcher
             var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
             var getSellerInfoFunction = auctionContract.GetFunction("getAuction");
             var labContract = web3.Eth.GetContract(KeyGetter.GetABI("labABI"), AxieLabContractAddress);
+            var landPresaleContract = web3.Eth.GetContract(KeyGetter.GetABI("landSaleABI"), AxieLandPresaleContract);
             //get events
             var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
             var auctionCreatedEvent = auctionContract.GetEvent("AuctionCreated");
             var axieBoughtEvent = labContract.GetEvent("AxieBought");
             var auctionCancelled = auctionContract.GetEvent("AuctionCancelled");
+            var chestPurchasedEvent = landPresaleContract.GetEvent("ChestPurchased");
 
             //set block range search
             var lastBlock = await GetLastBlockCheckpoint(web3);
@@ -192,15 +196,19 @@ namespace AxieDataFetcher.BlockchainFetcher
             var auctionCancelledFilterAll = auctionCancelled.CreateFilterInput(firstBlock, lastBlock);
             var auctionCreationFilterAll = auctionCreatedEvent.CreateFilterInput(firstBlock, lastBlock);
             var labFilterAll = axieBoughtEvent.CreateFilterInput(firstBlock, lastBlock);
+            var landSaleFilterAll = chestPurchasedEvent.CreateFilterInput(firstBlock, lastBlock);
 
             //get logs from blockchain
             var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
             //var auctionCancelledLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionCancelledEvent>(auctionFilterAll);
             var labLogs = await axieBoughtEvent.GetAllChanges<AxieBoughtEvent>(labFilterAll);
             //var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
+            var landLogs = await chestPurchasedEvent.GetAllChanges<ChestPurchasedEvent>(landSaleFilterAll);
 
             int eggCount = 0;
-
+            var landResult = new int[] { 0, 0, 0, 0 };
+            var landHolders = await DbFetch.FetchUniqueLandHolders();
+            var landGains = 0;
             foreach (var log in labLogs)
             {
                 eggCount += log.Event.amount;
@@ -218,7 +226,20 @@ namespace AxieDataFetcher.BlockchainFetcher
                 }
             }
 
+            foreach(var log in landLogs)
+            {
+                landResult[log.Event.chestType]++;
+                if (landHolders.Contains(log.Event.owner))
+                {
+                    await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders").InsertOneAsync(new UniqueBuyer(log.Event.owner));
+                    landGains++;
+                }
+            }
+
+            await Utils.PushLandData(landResult, LoopHandler.lastUnixTimeCheck);
+
             await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueBuyerGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
+            await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueLandholderGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, landGains));
 
             var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
             await collec.InsertOneAsync(new EggCount(LoopHandler.lastUnixTimeCheck, eggCount));
@@ -230,8 +251,8 @@ namespace AxieDataFetcher.BlockchainFetcher
         {
             var web3 = new Web3("https://mainnet.infura.io");
             var lastBlock = await GetLastBlockCheckpoint(web3);
-            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
-            var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
+            var landContract = web3.Eth.GetContract(KeyGetter.GetABI("landSaleABI"), AxieCoreContractAddress);
+            var chestPurchasedEvent = landContract.GetEvent("ChestPurchased");
 
             var uniqueBuyers = new List<string>();
             var lastBlockvalue = lastBlock.BlockNumber.Value;
@@ -240,11 +261,11 @@ namespace AxieDataFetcher.BlockchainFetcher
                 var latest = lastBlockChecked + 50000;
                 if (latest > lastBlockvalue)
                     latest = lastBlockvalue;
-                var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), new BlockParameter(new HexBigInteger(latest)));
-                var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
+                var landFilterAll = chestPurchasedEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), new BlockParameter(new HexBigInteger(latest)));
+                var landLogs = await chestPurchasedEvent.GetAllChanges<AuctionSuccessfulEvent>(landFilterAll);
 
 
-                foreach (var logs in auctionLogs)
+                foreach (var logs in landLogs)
                 {
                     if (!uniqueBuyers.Contains(logs.Event.winner)) uniqueBuyers.Add(logs.Event.winner);
                 }
@@ -404,6 +425,33 @@ namespace AxieDataFetcher.BlockchainFetcher
 
         [Parameter("uint256", "_tokenId", 2, true)]
         public BigInteger tokenId { get; set; }
+    }
+
+    public class ChestPurchasedEvent
+    {
+        [Parameter("uint8", "_chestType", 1, true)]
+        public int chestType { get; set; }
+
+        [Parameter("uint256", "_chestAmount", 2)]
+        public BigInteger chestAmount { get; set; }
+
+        [Parameter("address", "_tokenAddress", 3, true)]
+        public string tokenAddress { get; set; }
+
+        [Parameter("uint256", "_tokenAmount", 4)]
+        public BigInteger tokenAmount { get; set; }
+
+        [Parameter("uint256", "_totalPrice", 5)]
+        public BigInteger totalPrice { get; set; }
+
+        [Parameter("uint256", "_lunaCashbackAmount", 6)]
+        public BigInteger lunaCashbackAmount { get; set; }
+
+        [Parameter("address", "_buyer", 7)]
+        public string buyer { get; set; }
+
+        [Parameter("address", "_owner", 8, true)]
+        public string owner { get; set; }
     }
 
     [FunctionOutput]
