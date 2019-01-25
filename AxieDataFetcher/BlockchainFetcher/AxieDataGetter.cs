@@ -33,7 +33,7 @@ namespace AxieDataFetcher.BlockchainFetcher
         private static string AxieExtraDataContract = "0x10e304a53351b272dc415ad049ad06565ebdfe34";
         private static string AxieLandPresaleContract = "0x7a11462A2adAed5571b91e34a127E4cbF51b152c";
         #endregion
-        private static BigInteger lastBlockChecked = 5318592;
+        private static BigInteger lastBlockChecked = 7108917;
 
 
         public static bool IsServiceOn = true;
@@ -238,8 +238,11 @@ namespace AxieDataFetcher.BlockchainFetcher
 
             await Utils.PushLandData(landResult, LoopHandler.lastUnixTimeCheck);
 
-            await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueBuyerGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
-            await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueLandholderGains").InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, landGains));
+            await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueBuyerGains")
+            .InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
+
+            await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueLandholderGains")
+            .InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, landGains));
 
             var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
             await collec.InsertOneAsync(new EggCount(LoopHandler.lastUnixTimeCheck, eggCount));
@@ -247,7 +250,7 @@ namespace AxieDataFetcher.BlockchainFetcher
             Console.WriteLine("Pods sync done.");
         }
 
-        public static async Task FetchAllUniqueBuyers()
+        public static async Task FetchAllUniqueLandBuyers()
         {
             var web3 = new Web3("https://mainnet.infura.io");
             var lastBlock = await GetLastBlockCheckpoint(web3);
@@ -258,32 +261,34 @@ namespace AxieDataFetcher.BlockchainFetcher
             var lastBlockvalue = lastBlock.BlockNumber.Value;
             while (lastBlockChecked < lastBlockvalue)
             {
-                var latest = lastBlockChecked + 50000;
+                var latest = lastBlockChecked + 10000;
                 if (latest > lastBlockvalue)
                     latest = lastBlockvalue;
                 var landFilterAll = chestPurchasedEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), new BlockParameter(new HexBigInteger(latest)));
-                var landLogs = await chestPurchasedEvent.GetAllChanges<AuctionSuccessfulEvent>(landFilterAll);
+                var landLogs = await chestPurchasedEvent.GetAllChanges<ChestPurchasedEvent>(landFilterAll);
 
 
-                foreach (var logs in landLogs)
+                foreach (var log in landLogs)
                 {
-                    if (!uniqueBuyers.Contains(logs.Event.winner)) uniqueBuyers.Add(logs.Event.winner);
+                    //landResult[log.Event.chestType]++;
+                    if (!uniqueBuyers.Contains(log.Event.buyer)) uniqueBuyers.Add(log.Event.buyer);
                 }
                 lastBlockChecked += 50000;
             }
-            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueBuyers");
+            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders");
             foreach (var buyers in uniqueBuyers) await collec.InsertOneAsync(new UniqueBuyer(buyers));
         }
 
-        public static async Task FetchCumulUniqueBuyers()
+        public static async Task FetchCumulUniqueLandBuyers()
         {
             var web3 = new Web3("https://mainnet.infura.io");
             var lastBlock = await GetLastBlockCheckpoint(web3);
-            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
-            var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
+            var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("landSaleABI"), AxieLandPresaleContract);
+            var chestPurchasedEvent = auctionContract.GetEvent("ChestPurchased");
 
+            var landResult = new int[] { 0, 0, 0, 0 };
             List<int> list = new List<int>();
-            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueBuyerGains");
+            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueLandHoldersGains");
             var uniqueBuyers = new List<string>();
             var uniqueGains = 0;
             var initialTime = await GetBlockTimeStamp(lastBlockChecked, web3);
@@ -293,20 +298,23 @@ namespace AxieDataFetcher.BlockchainFetcher
                 var latest = lastBlockChecked + 50000;
                 if (latest > lastBlockvalue)
                     latest = lastBlockvalue;
-                var auctionFilterAll = auctionSuccesfulEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), new BlockParameter(new HexBigInteger(latest)));
-                var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
+                var auctionFilterAll = chestPurchasedEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), new BlockParameter(new HexBigInteger(latest)));
+                var auctionLogs = await chestPurchasedEvent.GetAllChanges<ChestPurchasedEvent>(auctionFilterAll);
 
 
-                foreach (var logs in auctionLogs)
+                foreach (var log in auctionLogs)
                 {
-                    if (!uniqueBuyers.Contains(logs.Event.winner))
-                    {
-                        uniqueBuyers.Add(logs.Event.winner);
+                    landResult[log.Event.chestType]++;
+                    if (!uniqueBuyers.Contains(log.Event.buyer))
+                    { 
+                        uniqueBuyers.Add(log.Event.buyer);
                         uniqueGains++;
                     }
-                    var logTime = await GetBlockTimeStamp(logs.Log.BlockNumber.Value, web3);
+                    var logTime = await GetBlockTimeStamp(log.Log.BlockNumber.Value, web3);
                     if (logTime - initialTime > 86400)
                     {
+                        await Utils.PushLandData(landResult, LoopHandler.lastUnixTimeCheck);
+                        landResult = new int[] { 0, 0, 0, 0 };
                         var diff = logTime - initialTime;
                         var mult = diff / 86400;
                         if (mult > 1)
