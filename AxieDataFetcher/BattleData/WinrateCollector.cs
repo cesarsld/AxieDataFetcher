@@ -460,7 +460,7 @@ namespace AxieDataFetcher.BattleData
                 }
                 else
                 {
-                    var data = await AxieObjectOld.GetAxieFromApi(axie.id);
+                    var data = await AxieObjectV2.GetAxieFromApi(axie.id);
                     axie.moves = new string[4];
                     var index = 0;
                     foreach (var move in data.parts)

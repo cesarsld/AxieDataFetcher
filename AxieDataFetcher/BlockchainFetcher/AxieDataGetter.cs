@@ -31,9 +31,10 @@ namespace AxieDataFetcher.BlockchainFetcher
         private static string NftAddress = "0xf5b0a3efb8e8e4c201e2a935f110eaaf3ffecb8d";
         private static string AxieLabContractAddress = "0x99ff9f4257D5b6aF1400C994174EbB56336BB79F";
         private static string AxieExtraDataContract = "0x10e304a53351b272dc415ad049ad06565ebdfe34";
-        private static string AxieLandPresaleContract = "0x7a11462A2adAed5571b91e34a127E4cbF51b152c";
+        //private static string AxieLandPresaleContract = "0x7a11462A2adAed5571b91e34a127E4cbF51b152c";
+        private static string AxieLandPresaleContract = "0x2299a91cc0bffd8c7f71349da8ab03527b79724f";
         #endregion
-        private static BigInteger lastBlockChecked = 7108917;
+        private static BigInteger lastBlockChecked = 5318756;//auction sales
 
 
         public static bool IsServiceOn = true;
@@ -254,7 +255,7 @@ namespace AxieDataFetcher.BlockchainFetcher
         {
             var web3 = new Web3("https://mainnet.infura.io");
             var lastBlock = await GetLastBlockCheckpoint(web3);
-            var landContract = web3.Eth.GetContract(KeyGetter.GetABI("landSaleABI"), AxieCoreContractAddress);
+            var landContract = web3.Eth.GetContract(KeyGetter.GetABI("landSaleABI"), AxieLandPresaleContract);
             var chestPurchasedEvent = landContract.GetEvent("ChestPurchased");
 
             var uniqueBuyers = new List<string>();
@@ -271,12 +272,15 @@ namespace AxieDataFetcher.BlockchainFetcher
                 foreach (var log in landLogs)
                 {
                     //landResult[log.Event.chestType]++;
-                    if (!uniqueBuyers.Contains(log.Event.buyer)) uniqueBuyers.Add(log.Event.buyer);
+                    if (!uniqueBuyers.Contains(log.Event.buyer)) uniqueBuyers.Add(log.Event.buyer.ToLower());
                 }
-                lastBlockChecked += 50000;
+                lastBlockChecked += 10000;
             }
+            var existing = await DbFetch.FetchUniqueLandHolders();
             var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders");
-            foreach (var buyers in uniqueBuyers) await collec.InsertOneAsync(new UniqueBuyer(buyers));
+            foreach (var buyers in uniqueBuyers)
+                if(!existing.Contains(buyers.ToLower()))
+                    await collec.InsertOneAsync(new UniqueBuyer(buyers));
         }
 
         public static async Task FetchCumulUniqueLandBuyers()
@@ -347,6 +351,37 @@ namespace AxieDataFetcher.BlockchainFetcher
             await collec.InsertOneAsync(new UniqueBuyerGain(initialTime + 86400, uniqueGains));
         }
 
+        public static async Task FetchAllAuctionSales()
+        {
+            var web3 = new Web3("https://mainnet.infura.io");
+            var lastBlock = await GetLastBlockCheckpoint(web3);
+            var coreContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
+            var auctionSuccessfulEvent = coreContract.GetEvent("AuctionSuccessful");
+
+            var uniqueBuyers = new List<string>();
+            var lastBlockvalue = lastBlock.BlockNumber.Value;
+            while (lastBlockChecked < lastBlockvalue)
+            {
+                var latest = lastBlockChecked + 10000;
+                if (latest > lastBlockvalue)
+                    latest = lastBlockvalue;
+                var auctionFilter = auctionSuccessfulEvent.CreateFilterInput(new BlockParameter(new HexBigInteger(lastBlockChecked)), new BlockParameter(new HexBigInteger(latest)));
+                var auctionLogs = await auctionSuccessfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilter);
+
+
+                foreach (var log in auctionLogs)
+                {
+                    var axie = await AxieDetailData.GetAxieFromApi(Convert.ToInt32(log.Event.tokenId.ToString()));
+                }
+                lastBlockChecked += 10000;
+            }
+            var existing = await DbFetch.FetchUniqueLandHolders();
+            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders");
+            foreach (var buyers in uniqueBuyers)
+                if (!existing.Contains(buyers.ToLower()))
+                    await collec.InsertOneAsync(new UniqueBuyer(buyers));
+        }
+
         private static async Task<int> GetBlockTimeStamp(BigInteger number, Web3 web3)
         {
             var blockParam = new BlockParameter(new HexBigInteger(number));
@@ -357,7 +392,7 @@ namespace AxieDataFetcher.BlockchainFetcher
         private static async Task<BlockParameter> GetLastBlockCheckpoint(Web3 web3)
         {
             var lastBlock = await web3.Eth.Blocks.GetBlockNumber.SendRequestAsync();
-            var blockNumber = lastBlock.Value - 12;
+            var blockNumber = lastBlock.Value - 10;
             return new BlockParameter(new HexBigInteger(blockNumber));
         }
 

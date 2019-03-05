@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace AxieDataFetcher.AxieObjects
 {
-    public class AxieObjectOld
+    public class AxieObjectV2
     {
         public int id;
         public int birthDate;
@@ -116,7 +116,7 @@ namespace AxieDataFetcher.AxieObjects
                 return "";
             }
         }
-        public static async Task<AxieObjectOld> GetAxieFromApi(int axieId)
+        public static async Task<AxieObjectV2> GetAxieFromApi(int axieId)
         {
             string json = "";
             int downloadTries = 0;
@@ -153,7 +153,7 @@ namespace AxieDataFetcher.AxieObjects
                 }
             }
             JObject axieJson = JObject.Parse(json);
-            AxieObjectOld axieData = axieJson.ToObject<AxieObjectOld>();
+            AxieObjectV2 axieData = axieJson.ToObject<AxieObjectV2>();
             axieData.jsonData = axieJson;
             return axieData;
         }

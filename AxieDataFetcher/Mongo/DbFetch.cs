@@ -29,7 +29,7 @@ namespace AxieDataFetcher.Mongo
             var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders");
             var data = (await collec.FindAsync(a => true)).ToList();
             List<string> list = new List<string>();
-            foreach (var buyer in data) list.Add(buyer.id);
+            foreach (var buyer in data) list.Add(buyer.id.ToLower());
             return list;
         }
     }

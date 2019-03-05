@@ -17,15 +17,15 @@ namespace AxieDataFetcher.Mongo
     {
         public static async Task AddNewAxie(int id)
         {
-            var collec = DatabaseConnection.GetDb().GetCollection<AxieObjectOld>("MarketplaceDatabase");
+            var collec = DatabaseConnection.GetDb().GetCollection<AxieObjectV2>("MarketplaceDatabase");
             var axie = (await collec.FindAsync(a => a.id == id)).FirstOrDefault();
             if(axie == null)
-            await collec.InsertOneAsync(await AxieObjectOld.GetAxieFromApi(id));
+            await collec.InsertOneAsync(await AxieObjectV2.GetAxieFromApi(id));
         }
 
         public static async Task RemoveAxie(int id)
         {
-            var collec = DatabaseConnection.GetDb().GetCollection<AxieObjectOld>("MarketplaceDatabase");
+            var collec = DatabaseConnection.GetDb().GetCollection<AxieObjectV2>("MarketplaceDatabase");
             var axie = (await collec.FindAsync(a => a.id == id)).FirstOrDefault();
             if (axie != null)
                 await collec.DeleteOneAsync(a => a.id == id);
@@ -34,7 +34,7 @@ namespace AxieDataFetcher.Mongo
         public static async Task SetupInitialData()
         {
             var list = await ApiCalls.GetAxieListFromMarketplace();
-            var collec = DatabaseConnection.GetDb().GetCollection<AxieObjectOld>("MarketplaceDatabase");
+            var collec = DatabaseConnection.GetDb().GetCollection<AxieObjectV2>("MarketplaceDatabase");
             await collec.InsertManyAsync(list);
         }
 

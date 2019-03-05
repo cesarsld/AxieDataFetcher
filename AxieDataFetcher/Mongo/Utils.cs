@@ -25,7 +25,7 @@ namespace AxieDataFetcher.Mongo
             }
         }
 
-        public static async Task UpdateLandHolders (List<string>)
+        public static async Task UpdateLandHolders (List<string> ee)
         { }
     }
 }

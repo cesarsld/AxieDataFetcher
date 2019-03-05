@@ -18,9 +18,9 @@ namespace AxieDataFetcher.MarketPlaceDatabase
     public class ApiCalls
     {
 
-        public static async Task<List<AxieObjectOld>> GetAxieListFromMarketplace()
+        public static async Task<List<AxieObjectV2>> GetAxieListFromMarketplace()
         {
-            var axieList = new List<AxieObjectOld>();
+            var axieList = new List<AxieObjectV2>();
             bool dataAvailable = true;
             bool setupDone = false;
             int axiePages = 9999;
@@ -59,10 +59,10 @@ namespace AxieDataFetcher.MarketPlaceDatabase
                     }
                     foreach (var axie in addressJson["axies"])
                     {
-                        AxieObjectOld axieData = new AxieObjectOld();
+                        AxieObjectV2 axieData = new AxieObjectV2();
                         //try
                         //{
-                        axieData = axie.ToObject<AxieObjectOld>();
+                        axieData = axie.ToObject<AxieObjectV2>();
                         //}
                         //catch (Exception e)
                         //{ Console.WriteLine(e.Message); }

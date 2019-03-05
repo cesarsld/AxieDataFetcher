@@ -17,6 +17,10 @@ namespace AxieDataFetcher
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
+            //Console.WriteLine(give(23));
+            //Console.ReadLine();
+            AxieDataGetter.FetchAllUniqueLandBuyers().GetAwaiter().GetResult();
+            //EggsSpawnDataFetcher.GetAllEggsSpawnedDataCumul().GetAwaiter().GetResult();
             //WinrateCollector.GetCumulBattleCount().GetAwaiter().GetResult();
             //inrateCollector.GetBattleDataSinceLastCheck().GetAwaiter().GetResult();
             //LoopHandler.UpdateServiceCheckLoop().GetAwaiter().GetResult();

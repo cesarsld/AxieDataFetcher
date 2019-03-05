@@ -49,7 +49,7 @@ namespace AxieDataFetcher.EggsSpawnedData
             {
                 Console.Clear();
                 Console.WriteLine(count);
-                var axieData = await AxieObjectOld.GetAxieFromApi(count);
+                var axieData = await AxieObjectV2.GetAxieFromApi(count);
                 if (time == 0) time = axieData.birthDate;
                 if(axieData.birthDate - time > 86400)
                 {
@@ -62,6 +62,21 @@ namespace AxieDataFetcher.EggsSpawnedData
                 count++;
             }
             KeyGetter.SetLastCheckedAxie(axieCount);
+        }
+
+        public static async Task GetAllEggsSpawnedDataCumul()
+        {
+            int axieCount = await GetAxieCount();
+            //int count = 1;
+            var list = (await DatabaseConnection.GetDb().GetCollection<EggCount>("EggsPerDay").FindAsync(a => true)).ToList();
+            //int time = 0;
+            int eggSpawned = 0;
+            foreach (var spawn in list)
+            {
+                eggSpawned += spawn.Count;
+                var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggsPerDayCumul");
+                await collec.InsertOneAsync(new EggCount(spawn.id, eggSpawned));
+            }
         }
 
         public static async Task GetEggsSpawnedFromCheckpoint()
