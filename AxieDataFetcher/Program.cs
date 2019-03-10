@@ -19,11 +19,12 @@ namespace AxieDataFetcher
             Console.WriteLine("Hello World!");
             //Console.WriteLine(give(23));
             //Console.ReadLine();
-            AxieDataGetter.FetchAllUniqueLandBuyers().GetAwaiter().GetResult();
+            //AxieDataGetter.FetchAllUniqueLandBuyers().GetAwaiter().GetResult();
+            //AxieDataGetter.FetchAllAuctionSales().GetAwaiter().GetResult();
             //EggsSpawnDataFetcher.GetAllEggsSpawnedDataCumul().GetAwaiter().GetResult();
             //WinrateCollector.GetCumulBattleCount().GetAwaiter().GetResult();
             //inrateCollector.GetBattleDataSinceLastCheck().GetAwaiter().GetResult();
-            //LoopHandler.UpdateServiceCheckLoop().GetAwaiter().GetResult();
+            LoopHandler.UpdateServiceCheckLoop().GetAwaiter().GetResult();
             //444542
             //AxieDataGetter.FetchCumulUniqueBuyers().GetAwaiter().GetResult();
             //AxieDataGetter.TestBid().GetAwaiter().GetResult();

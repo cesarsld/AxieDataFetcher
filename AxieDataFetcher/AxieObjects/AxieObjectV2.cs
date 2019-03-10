@@ -26,9 +26,10 @@ namespace AxieDataFetcher.AxieObjects
         public int stage;
         public AxieStats stats;
         public AxieAuction auction;
-        public JObject jsonData;
+        private JObject jsonData;
 
-
+        public JObject GetJson() => jsonData;
+        public JObject SetJson(JObject json) => jsonData = json;
         public int GetPureness()
         {
             int pureness = 0;
@@ -100,7 +101,16 @@ namespace AxieDataFetcher.AxieObjects
             int dpr = GetDPR();
             return (int)Math.Floor(GetDPR() / GetMaxDPR() * 100);
         }
-
+        public int mysticCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (var part in parts)
+                    if (part.mystic) count++;
+                return count;
+            }
+        }
         public static float GetMaxDPR() => 91.5f;
         public static float GetMaxTNK() => 129f;
         public static float GetMinTNK() => 33;
@@ -135,16 +145,7 @@ namespace AxieDataFetcher.AxieObjects
                     {
                         if (downloadTries == 5)
                         {
-                            try
-                            {
-                                json = await wc.DownloadStringTaskAsync("https://axieinfinity.com/api/axies/" + axieId.ToString());
-                                hasFetched = true;
-                            }
-                            catch (Exception e)
-                            {
-                                Console.WriteLine(ex.ToString());
-                                return null;
-                            }
+                            return null;
                         }
                         downloadTries++;
                         hasFetched = false;

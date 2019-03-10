@@ -35,6 +35,7 @@ namespace AxieDataFetcher.BlockchainFetcher
         private static string AxieLandPresaleContract = "0x2299a91cc0bffd8c7f71349da8ab03527b79724f";
         #endregion
         private static BigInteger lastBlockChecked = 5318756;//auction sales
+        //7331816
 
 
         public static bool IsServiceOn = true;
@@ -206,6 +207,26 @@ namespace AxieDataFetcher.BlockchainFetcher
             //var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
             var landLogs = await chestPurchasedEvent.GetAllChanges<ChestPurchasedEvent>(landSaleFilterAll);
 
+            var tagSaleTypeList = new Dictionary<AxieTag, SaleTypeList> {
+                {AxieTag.Origin,       new SaleTypeList() },
+                {AxieTag.MEO,          new SaleTypeList() },
+                {AxieTag.MEO2,         new SaleTypeList() },
+                {AxieTag.Agamogenesis, new SaleTypeList() },
+                {AxieTag.Untagged,     new SaleTypeList() }
+            };
+
+            var mysticSaleTypeList = new Dictionary<int, SaleTypeList> {
+                {-1, new SaleTypeList() }, //any mystic
+                {1, new SaleTypeList() },
+                {2, new SaleTypeList() },
+                {3, new SaleTypeList() },
+                {4, new SaleTypeList() }
+            };
+            var initialTime = await GetBlockTimeStamp(firstBlock.BlockNumber.Value, web3);
+
+            foreach (var value in tagSaleTypeList.Values) value.AddNewDataPoint(LoopHandler.lastUnixTimeCheck);
+            foreach (var value in mysticSaleTypeList.Values) value.AddNewDataPoint(LoopHandler.lastUnixTimeCheck);
+
             int eggCount = 0;
             var landResult = new int[] { 0, 0, 0, 0 };
             var landHolders = await DbFetch.FetchUniqueLandHolders();
@@ -225,15 +246,79 @@ namespace AxieDataFetcher.BlockchainFetcher
                     await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueBuyers").InsertOneAsync(new UniqueBuyer(log.Event.winner));
                     uniqueGains++;
                 }
+                var axie = await AxieDetailData.GetAxieFromApi(Convert.ToInt32(log.Event.tokenId.ToString()));
+                if (axie.stage > 2)
+                {
+                    axie.GetBodyType();
+                    if (axie.title != null)
+                    {
+                        var tag = axie.title;
+                        switch (tag)
+                        {
+                            case "Origin":
+                                tagSaleTypeList[AxieTag.Origin].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                break;
+                            case "Meo Corp":
+                                tagSaleTypeList[AxieTag.MEO].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                break;
+                            case "Meo Corp II":
+                                tagSaleTypeList[AxieTag.MEO2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                break;
+                            case "Agamogenesis":
+                                tagSaleTypeList[AxieTag.Agamogenesis].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                break;
+                        }
+                    }
+                    else
+                        tagSaleTypeList[AxieTag.Untagged].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+
+                    switch (axie.mysticCount)
+                    {
+                        case 1:
+                            mysticSaleTypeList[1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                            break;
+                        case 2:
+                            mysticSaleTypeList[2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                            break;
+                        case 3:
+                            mysticSaleTypeList[3].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                            break;
+                        case 4:
+                            mysticSaleTypeList[4].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                            break;
+                    }
+                    if (axie.mysticCount > 0)
+                        mysticSaleTypeList[-1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                }
             }
 
-            foreach(var log in landLogs)
+            foreach (var log in landLogs)
             {
                 landResult[log.Event.chestType]++;
                 if (landHolders.Contains(log.Event.owner))
                 {
                     await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders").InsertOneAsync(new UniqueBuyer(log.Event.owner));
                     landGains++;
+                }
+            }
+
+            foreach (var t in tagSaleTypeList)
+            {
+                var tagCollec = DatabaseConnection.GetDb().GetCollection<DaySummary>(t.Key.ToString());
+                foreach (var day in t.Value)
+                {
+                    await tagCollec.InsertOneAsync(day);
+                }
+            }
+            foreach (var t in mysticSaleTypeList)
+            {
+
+                var collecName = t.Key.ToString();
+                if (t.Key == -1) collecName = "AnyMystic";
+                var mysticCollec = DatabaseConnection.GetDb().GetCollection<DaySummary>(collecName);
+                foreach (var day in t.Value)
+                {
+                    await mysticCollec.InsertOneAsync(day);
                 }
             }
 
@@ -279,7 +364,7 @@ namespace AxieDataFetcher.BlockchainFetcher
             var existing = await DbFetch.FetchUniqueLandHolders();
             var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders");
             foreach (var buyers in uniqueBuyers)
-                if(!existing.Contains(buyers.ToLower()))
+                if (!existing.Contains(buyers.ToLower()))
                     await collec.InsertOneAsync(new UniqueBuyer(buyers));
         }
 
@@ -310,7 +395,7 @@ namespace AxieDataFetcher.BlockchainFetcher
                 {
                     landResult[log.Event.chestType]++;
                     if (!uniqueBuyers.Contains(log.Event.buyer))
-                    { 
+                    {
                         uniqueBuyers.Add(log.Event.buyer);
                         uniqueGains++;
                     }
@@ -353,13 +438,33 @@ namespace AxieDataFetcher.BlockchainFetcher
 
         public static async Task FetchAllAuctionSales()
         {
+            var tagSaleTypeList = new Dictionary<AxieTag, SaleTypeList> {
+                {AxieTag.Origin,       new SaleTypeList() },
+                {AxieTag.MEO,          new SaleTypeList() },
+                {AxieTag.MEO2,         new SaleTypeList() },
+                {AxieTag.Agamogenesis, new SaleTypeList() },
+                {AxieTag.Untagged,     new SaleTypeList() }
+            };
+
+            var mysticSaleTypeList = new Dictionary<int, SaleTypeList> {
+                {-1, new SaleTypeList() }, //any mystic
+                {1, new SaleTypeList() },
+                {2, new SaleTypeList() },
+                {3, new SaleTypeList() },
+                {4, new SaleTypeList() }
+            };
             var web3 = new Web3("https://mainnet.infura.io");
             var lastBlock = await GetLastBlockCheckpoint(web3);
             var coreContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
             var auctionSuccessfulEvent = coreContract.GetEvent("AuctionSuccessful");
 
             var uniqueBuyers = new List<string>();
-            var lastBlockvalue = lastBlock.BlockNumber.Value;
+            //var lastBlockvalue = lastBlock.BlockNumber.Value;
+            var lastBlockvalue = 7331816;
+            var initialTime = await GetBlockTimeStamp(lastBlockChecked, web3);
+            foreach (var value in tagSaleTypeList.Values) value.AddNewDataPoint(initialTime);
+            foreach (var value in mysticSaleTypeList.Values) value.AddNewDataPoint(initialTime);
+
             while (lastBlockChecked < lastBlockvalue)
             {
                 var latest = lastBlockChecked + 10000;
@@ -371,15 +476,81 @@ namespace AxieDataFetcher.BlockchainFetcher
 
                 foreach (var log in auctionLogs)
                 {
+                    var logTime = await GetBlockTimeStamp(log.Log.BlockNumber.Value, web3);
                     var axie = await AxieDetailData.GetAxieFromApi(Convert.ToInt32(log.Event.tokenId.ToString()));
+                    if (axie.stage > 2)
+                    {
+                        axie.GetBodyType();
+                        if (axie.title != null)
+                        {
+                            var tag = axie.title;
+                            switch (tag)
+                            {
+                                case "Origin":
+                                    tagSaleTypeList[AxieTag.Origin].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case "Meo Corp":
+                                    tagSaleTypeList[AxieTag.MEO].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case "Meo Corp II":
+                                    tagSaleTypeList[AxieTag.MEO2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case "Agamogenesis":
+                                    tagSaleTypeList[AxieTag.Agamogenesis].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                            }
+                        }
+                        else
+                            tagSaleTypeList[AxieTag.Untagged].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+
+                        switch (axie.mysticCount)
+                        {
+                            case 1:
+                                mysticSaleTypeList[1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                break;
+                            case 2:
+                                mysticSaleTypeList[2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                break;
+                            case 3:
+                                mysticSaleTypeList[3].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                break;
+                            case 4:
+                                mysticSaleTypeList[4].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                break;
+                        }
+                        if (axie.mysticCount > 0)
+                            mysticSaleTypeList[-1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+
+                    }
+                    if (logTime - initialTime > 86400)
+                    {
+                        foreach (var value in tagSaleTypeList.Values) value.AddNewDataPoint(initialTime + 86400);
+                        foreach (var value in mysticSaleTypeList.Values) value.AddNewDataPoint(initialTime + 86400);
+                        initialTime += 86400;
+                    }
                 }
                 lastBlockChecked += 10000;
             }
-            var existing = await DbFetch.FetchUniqueLandHolders();
-            var collec = DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders");
-            foreach (var buyers in uniqueBuyers)
-                if (!existing.Contains(buyers.ToLower()))
-                    await collec.InsertOneAsync(new UniqueBuyer(buyers));
+
+            foreach (var t in tagSaleTypeList)
+            {
+                var collec = DatabaseConnection.GetDb().GetCollection<DaySummary>(t.Key.ToString());
+                foreach (var day in t.Value)
+                {
+                    await collec.InsertOneAsync(day);
+                }
+            }
+            foreach (var t in mysticSaleTypeList)
+            {
+
+                var collecName = t.Key.ToString();
+                if (t.Key == -1) collecName = "AnyMystic";
+                var collec = DatabaseConnection.GetDb().GetCollection<DaySummary>(collecName);
+                foreach (var day in t.Value)
+                {
+                    await collec.InsertOneAsync(day);
+                }
+            }
         }
 
         private static async Task<int> GetBlockTimeStamp(BigInteger number, Web3 web3)

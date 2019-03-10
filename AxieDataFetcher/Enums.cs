@@ -17,4 +17,21 @@ namespace AxieDataFetcher
         shape,
         colour
     }
+
+    public enum AxieTag
+    {
+        Untagged,
+        Origin,
+        MEO,
+        MEO2,
+        Agamogenesis,
+    }
+
+    public enum SaleType
+    {
+        Tag,
+        MysticCount,
+        BodyType,
+        Part
+    }
 }

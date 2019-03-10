@@ -19,12 +19,12 @@ namespace AxieDataFetcher.Mongo
         private static IMongoCollection<BsonDocument> Collection;
 
 
-        public static void SetupConnection()
+        public static void SetupConnection(string db = "AxieData")
         {
             var connectionString = KeyGetter.GetDBUrl();
 
             Client = new MongoClient(connectionString);
-            AxieDatabase = Client.GetDatabase("AxieData");
+            AxieDatabase = Client.GetDatabase(db);
         }
 
         public static void UpdateIpAddress(string ip)

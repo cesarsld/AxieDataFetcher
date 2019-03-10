@@ -66,7 +66,7 @@ namespace AxieDataFetcher.MarketPlaceDatabase
                         //}
                         //catch (Exception e)
                         //{ Console.WriteLine(e.Message); }
-                        axieData.jsonData = JObject.Parse(axie.ToString());
+                        axieData.SetJson(JObject.Parse(axie.ToString()));
                         if (axieData.stage <= 2)
                         {
                             Console.WriteLine("Axie still egg, moving on.");

@@ -89,6 +89,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AxieObjects\AxieCustomData.cs" />
+    <Compile Include="AxieObjects\AxieDetailData.cs" />
+    <Compile Include="AxieObjects\GeneData.cs" />
+    <Compile Include="BlockchainFetcher\DailySaleData.cs" />
     <Compile Include="BlockchainFetcher\EggCount.cs" />
     <Compile Include="BlockchainFetcher\UniqueBuyer.cs" />
     <Compile Include="BlockchainFetcher\UniqueBuyerGain.cs" />
@@ -98,7 +101,7 @@
     <Compile Include="Mongo\MarketplaceDatabase.cs" />
     <Compile Include="MultiThreading\MultiThreadHandler.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="AxieObjects\AxieObjectOld.cs" />
+    <Compile Include="AxieObjects\AxieObjectV2.cs" />
     <Compile Include="AxieObjects\AxieObjectV1.cs" />
     <Compile Include="AxieObjects\AxieParts.cs" />
     <Compile Include="BattleData\StatisticClasses.cs" />

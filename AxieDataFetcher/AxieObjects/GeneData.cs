@@ -12,6 +12,7 @@ namespace AxieDataFetcher.AxieObjects
         public string[] genome;
         public string Class;
         public AxieGeneTrait[] TraitData = new AxieGeneTrait[6];
+        public int bodyType;
 
         public GeneData(string[] genes)
         {
@@ -23,6 +24,7 @@ namespace AxieDataFetcher.AxieObjects
         {
             genome = GetSubGroups(calcBinary(gene));
             for (int i = 0; i < TraitData.Length; i++) TraitData[i] = new AxieGeneTrait();
+            GetDataFromGenome();
         }
 
         public void GetDataFromGenome()
@@ -34,7 +36,9 @@ namespace AxieDataFetcher.AxieObjects
                 TraitData[i].R1Class = GetClassFromBinary(genome[i + 2].Substring(12, 4));
                 TraitData[i].R2Class = GetClassFromBinary(genome[i + 2].Substring(22, 4));
             }
+            bodyType = Convert.ToInt32(genome[1].Substring(2, 6), 2);
         }
+
 
         private string GetClassFromBinary(string binary)
         {
@@ -42,6 +46,30 @@ namespace AxieDataFetcher.AxieObjects
             {
                 case "0000":
                     return "beast";
+                case "0001":
+                    return "bug";
+                case "0010":
+                    return "bird";
+                case "0011":
+                    return "plant";
+                case "0100":
+                    return "aquatic";
+                case "0101":
+                    return "reptile";
+                case "1000":
+                    return "hidden_1";
+                case "1001":
+                    return "hidden_2";
+                case "1010":
+                    return "hidden_3";
+            }
+            return "";
+        }
+
+        private string GetBodyTypeFromBinary(string binary)
+        {
+            switch (binary)
+            {
                 case "0001":
                     return "bug";
                 case "0010":
