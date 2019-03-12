@@ -16,6 +16,7 @@ using System.Data;
 using AxieDataFetcher.Mongo;
 using AxieDataFetcher.AxieObjects;
 using AxieDataFetcher.Core;
+using AxieDataFetcher.MultiThreading;
 
 namespace AxieDataFetcher.BattleData
 {
@@ -302,6 +303,27 @@ namespace AxieDataFetcher.BattleData
             if (battleCount > 0) await DatabaseConnection.GetDb().GetCollection<DailyBattles>("CumulDailyBattles").InsertOneAsync(new DailyBattles(LoopHandler.lastUnixTimeCheck, battleCount));
         }
 
+        public static async Task GetBattlesFromRange()
+        {
+            Console.WriteLine("WR per day init");
+            string dataCountUrl = "https://api.axieinfinity.com/v1/battle/history/matches-count";
+            string battleNumberPath = "AxieData/LastCheck.txt";
+            int lastChecked = 0;
+            int lastBattle = 0;
+            using (System.Net.WebClient wc = new System.Net.WebClient())
+            {
+                lastBattle = Convert.ToInt32((await wc.DownloadStringTaskAsync(dataCountUrl)));
+            }
+            using (StreamReader sr = new StreamReader(battleNumberPath, Encoding.UTF8))
+            {
+                lastChecked = Convert.ToInt32(sr.ReadToEnd());
+            }
+            var mtHandler = new MultiThreadHandler();
+            mtHandler.MultiThreadLogFetchAll(lastChecked, lastBattle);
+            Console.WriteLine("Wr sync done.");
+            Console.Clear();
+        }
+
         public static async Task GetBattleDataSinceLastCheck()
         {
             Console.WriteLine("WR per day init");
@@ -328,101 +350,108 @@ namespace AxieDataFetcher.BattleData
 
             while (lastChecked < lastBattle)
             {
-                lastChecked++;
-                counter++;
-                if (counter > perc)
-                {
-                    apiPerc++;
-                    counter = 0;
-                    Console.WriteLine($"{apiPerc}%");
-                }
-                string json = null;
                 try
                 {
-                    using (System.Net.WebClient wc = new System.Net.WebClient())
+                    lastChecked++;
+                    counter++;
+                    if (counter > perc)
                     {
-                        json = wc.DownloadString("https://api.axieinfinity.com/v1/battle/history/matches/" + lastChecked.ToString());
+                        apiPerc++;
+                        counter = 0;
+                        Console.WriteLine($"{apiPerc}%");
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-                if (json != null)
-                {
-                    battleCount++;
-                    JObject axieJson = JObject.Parse(json);
-                    JObject script = JObject.Parse((string)axieJson["script"]);
-                    int[] team1 = new int[3];
-                    int[] team2 = new int[3];
-                    for (int i = 0; i < 3; i++)
+                    string json = null;
+                    try
                     {
-                        team1[i] = (int)script["metadata"]["fighters"][i]["id"];
-                        team2[i] = (int)script["metadata"]["fighters"][i + 3]["id"];
-                    }
-                    int winningAxie = (int)script["result"]["lastAlive"][0];
-                    int[] winningTeam;
-                    int[] losingTeam;
-                    if (team1.Contains(winningAxie))
-                    {
-                        winningTeam = team1;
-                        losingTeam = team2;
-                    }
-                    else
-                    {
-                        losingTeam = team1;
-                        winningTeam = team2;
-                    }
-                    if (axieJson["expUpdates"].Count() > 0)
-                    {
-                        for (int i = 0; i < 3; i++)
+                        using (System.Net.WebClient wc = new System.Net.WebClient())
                         {
-                            var winner = winrateList.FirstOrDefault(a => a.id == winningTeam[i]);
-                            if (winner != null)
-                            {
-                                winner.win++;
-                                winner.battleHistory += "1";
-                                winner.wonBattles.Add(lastChecked);
-                            }
-                            else winrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", LoopHandler.lastUnixTimeCheck, lastChecked, true));
-
-                            var loser = winrateList.FirstOrDefault(a => a.id == losingTeam[i]);
-                            if (loser != null)
-                            {
-                                loser.loss++;
-                                loser.battleHistory += "0";
-                                loser.lostBattles.Add(lastChecked);
-                            }
-                            else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", LoopHandler.lastUnixTimeCheck, lastChecked, false));
+                            json = wc.DownloadString("https://api.axieinfinity.com/v1/battle/history/matches/" + lastChecked.ToString());
                         }
                     }
-                    else
+                    catch (Exception ex)
                     {
+                        Console.WriteLine(ex.Message);
+                    }
+                    if (json != null)
+                    {
+                        battleCount++;
+                        JObject axieJson = JObject.Parse(json);
+                        JObject script = JObject.Parse((string)axieJson["script"]);
+                        int[] team1 = new int[3];
+                        int[] team2 = new int[3];
                         for (int i = 0; i < 3; i++)
                         {
-                            var winner = practiceWinrateList.FirstOrDefault(a => a.id == winningTeam[i]);
-                            if (winner != null)
-                            {
-                                winner.win++;
-                                winner.battleHistory += "1";
-                                winner.wonBattles.Add(lastChecked);
-                            }
-                            else practiceWinrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", LoopHandler.lastUnixTimeCheck, lastChecked, true));
-
-                            var loser = practiceWinrateList.FirstOrDefault(a => a.id == losingTeam[i]);
-                            if (loser != null)
-                            {
-                                loser.loss++;
-                                loser.battleHistory += "0";
-                                loser.lostBattles.Add(lastChecked);
-                            }
-                            else practiceWinrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", LoopHandler.lastUnixTimeCheck, lastChecked, false));
+                            team1[i] = (int)script["metadata"]["fighters"][i]["id"];
+                            team2[i] = (int)script["metadata"]["fighters"][i + 3]["id"];
                         }
+                        int winningAxie = (int)script["result"]["lastAlive"][0];
+                        int[] winningTeam;
+                        int[] losingTeam;
+                        if (team1.Contains(winningAxie))
+                        {
+                            winningTeam = team1;
+                            losingTeam = team2;
+                        }
+                        else
+                        {
+                            losingTeam = team1;
+                            winningTeam = team2;
+                        }
+                        if (axieJson["expUpdates"].Count() > 0)
+                        {
+                            for (int i = 0; i < 3; i++)
+                            {
+                                var winner = winrateList.FirstOrDefault(a => a.id == winningTeam[i]);
+                                if (winner != null)
+                                {
+                                    winner.win++;
+                                    winner.battleHistory += "1";
+                                    winner.wonBattles.Add(lastChecked);
+                                }
+                                else winrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", LoopHandler.lastUnixTimeCheck, lastChecked, true));
+
+                                var loser = winrateList.FirstOrDefault(a => a.id == losingTeam[i]);
+                                if (loser != null)
+                                {
+                                    loser.loss++;
+                                    loser.battleHistory += "0";
+                                    loser.lostBattles.Add(lastChecked);
+                                }
+                                else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", LoopHandler.lastUnixTimeCheck, lastChecked, false));
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < 3; i++)
+                            {
+                                var winner = practiceWinrateList.FirstOrDefault(a => a.id == winningTeam[i]);
+                                if (winner != null)
+                                {
+                                    winner.win++;
+                                    winner.battleHistory += "1";
+                                    winner.wonBattles.Add(lastChecked);
+                                }
+                                else practiceWinrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", LoopHandler.lastUnixTimeCheck, lastChecked, true));
+
+                                var loser = practiceWinrateList.FirstOrDefault(a => a.id == losingTeam[i]);
+                                if (loser != null)
+                                {
+                                    loser.loss++;
+                                    loser.battleHistory += "0";
+                                    loser.lostBattles.Add(lastChecked);
+                                }
+                                else practiceWinrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", LoopHandler.lastUnixTimeCheck, lastChecked, false));
+                            }
+                        }
+                        if (!uniqueUsers.Contains((string)axieJson["winner"])) uniqueUsers.Add((string)axieJson["winner"]);
+                        if (!uniqueUsers.Contains((string)axieJson["loser"])) uniqueUsers.Add((string)axieJson["loser"]);
+
+
                     }
-                    if (!uniqueUsers.Contains((string)axieJson["winner"])) uniqueUsers.Add((string)axieJson["winner"]);
-                    if (!uniqueUsers.Contains((string)axieJson["loser"])) uniqueUsers.Add((string)axieJson["loser"]);
-
-
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Data);
                 }
             }
             foreach (var axie in winrateList) axie.GetWinrate();

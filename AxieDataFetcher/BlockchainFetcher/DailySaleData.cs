@@ -60,6 +60,7 @@ namespace AxieDataFetcher.BlockchainFetcher
         {
             axieId = -1;
             price = 0;
+
         }
     }
 

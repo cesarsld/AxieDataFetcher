@@ -34,8 +34,8 @@ namespace AxieDataFetcher.BlockchainFetcher
         //private static string AxieLandPresaleContract = "0x7a11462A2adAed5571b91e34a127E4cbF51b152c";
         private static string AxieLandPresaleContract = "0x2299a91cc0bffd8c7f71349da8ab03527b79724f";
         #endregion
-        private static BigInteger lastBlockChecked = 5318756;//auction sales
-        //7331816
+        private static BigInteger lastBlockChecked = 7331816;//auction sales
+        //7331816 5318756 7338212
 
 
         public static bool IsServiceOn = true;
@@ -181,13 +181,13 @@ namespace AxieDataFetcher.BlockchainFetcher
             var auctionContract = web3.Eth.GetContract(KeyGetter.GetABI("auctionABI"), AxieCoreContractAddress);
             var getSellerInfoFunction = auctionContract.GetFunction("getAuction");
             var labContract = web3.Eth.GetContract(KeyGetter.GetABI("labABI"), AxieLabContractAddress);
-            var landPresaleContract = web3.Eth.GetContract(KeyGetter.GetABI("landSaleABI"), AxieLandPresaleContract);
+            //var landPresaleContract = web3.Eth.GetContract(KeyGetter.GetABI("landSaleABI"), AxieLandPresaleContract);
             //get events
             var auctionSuccesfulEvent = auctionContract.GetEvent("AuctionSuccessful");
             var auctionCreatedEvent = auctionContract.GetEvent("AuctionCreated");
             var axieBoughtEvent = labContract.GetEvent("AxieBought");
             var auctionCancelled = auctionContract.GetEvent("AuctionCancelled");
-            var chestPurchasedEvent = landPresaleContract.GetEvent("ChestPurchased");
+            //var chestPurchasedEvent = landPresaleContract.GetEvent("ChestPurchased");
 
             //set block range search
             var lastBlock = await GetLastBlockCheckpoint(web3);
@@ -198,14 +198,14 @@ namespace AxieDataFetcher.BlockchainFetcher
             var auctionCancelledFilterAll = auctionCancelled.CreateFilterInput(firstBlock, lastBlock);
             var auctionCreationFilterAll = auctionCreatedEvent.CreateFilterInput(firstBlock, lastBlock);
             var labFilterAll = axieBoughtEvent.CreateFilterInput(firstBlock, lastBlock);
-            var landSaleFilterAll = chestPurchasedEvent.CreateFilterInput(firstBlock, lastBlock);
+            //var landSaleFilterAll = chestPurchasedEvent.CreateFilterInput(firstBlock, lastBlock);
 
             //get logs from blockchain
             var auctionLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionSuccessfulEvent>(auctionFilterAll);
             //var auctionCancelledLogs = await auctionSuccesfulEvent.GetAllChanges<AuctionCancelledEvent>(auctionFilterAll);
             var labLogs = await axieBoughtEvent.GetAllChanges<AxieBoughtEvent>(labFilterAll);
             //var auctionCreationLogs = await auctionCreatedEvent.GetAllChanges<AuctionCreatedEvent>(auctionCreationFilterAll);
-            var landLogs = await chestPurchasedEvent.GetAllChanges<ChestPurchasedEvent>(landSaleFilterAll);
+            //var landLogs = await chestPurchasedEvent.GetAllChanges<ChestPurchasedEvent>(landSaleFilterAll);
 
             var tagSaleTypeList = new Dictionary<AxieTag, SaleTypeList> {
                 {AxieTag.Origin,       new SaleTypeList() },
@@ -292,15 +292,15 @@ namespace AxieDataFetcher.BlockchainFetcher
                 }
             }
 
-            foreach (var log in landLogs)
-            {
-                landResult[log.Event.chestType]++;
-                if (landHolders.Contains(log.Event.owner))
-                {
-                    await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders").InsertOneAsync(new UniqueBuyer(log.Event.owner));
-                    landGains++;
-                }
-            }
+            //foreach (var log in landLogs)
+            //{
+            //    landResult[log.Event.chestType]++;
+            //    if (landHolders.Contains(log.Event.owner))
+            //    {
+            //        await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueLandHolders").InsertOneAsync(new UniqueBuyer(log.Event.owner));
+            //        landGains++;
+            //    }
+            //}
 
             foreach (var t in tagSaleTypeList)
             {
@@ -322,7 +322,7 @@ namespace AxieDataFetcher.BlockchainFetcher
                 }
             }
 
-            await Utils.PushLandData(landResult, LoopHandler.lastUnixTimeCheck);
+            //await Utils.PushLandData(landResult, LoopHandler.lastUnixTimeCheck);
 
             await DatabaseConnection.GetDb().GetCollection<UniqueBuyerGain>("UniqueBuyerGains")
             .InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, uniqueGains));
@@ -460,7 +460,7 @@ namespace AxieDataFetcher.BlockchainFetcher
 
             var uniqueBuyers = new List<string>();
             //var lastBlockvalue = lastBlock.BlockNumber.Value;
-            var lastBlockvalue = 7331816;
+            var lastBlockvalue = 7338212;
             var initialTime = await GetBlockTimeStamp(lastBlockChecked, web3);
             foreach (var value in tagSaleTypeList.Values) value.AddNewDataPoint(initialTime);
             foreach (var value in mysticSaleTypeList.Values) value.AddNewDataPoint(initialTime);

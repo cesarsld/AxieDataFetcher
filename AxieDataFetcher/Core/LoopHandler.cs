@@ -30,9 +30,9 @@ namespace AxieDataFetcher.Core
                     {
                         tw.Write(lastUnixTimeCheck.ToString());
                     }
-                    await EggsSpawnDataFetcher.GetEggsSpawnedFromCheckpoint();
-                    await AxieDataGetter.FetchLogsSinceLastCheck();
-                    await WinrateCollector.GetBattleDataSinceLastCheck();
+                    //await EggsSpawnDataFetcher.GetEggsSpawnedFromCheckpoint();
+                    //await AxieDataGetter.FetchLogsSinceLastCheck();
+                    await WinrateCollector.GetBattlesFromRange();
                 }
 
                 await Task.Delay(60000);
