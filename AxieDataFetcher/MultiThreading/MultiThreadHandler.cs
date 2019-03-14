@@ -15,11 +15,24 @@ using MongoDB.Driver.Core;
 using System.Data;
 using AxieDataFetcher.AxieObjects;
 using AxieDataFetcher.Mongo;
-using AxieDataFetcher.AxieObjects;
+using AxieDataFetcher.Core;
 using AxieDataFetcher.BattleData;
 
 namespace AxieDataFetcher.MultiThreading
 {
+    public class MatchPlayers
+    {
+        public string p1;
+        public string p2;
+        public int time;
+
+        public MatchPlayers(string add1, string add2, int _time)
+        {
+            p1 = add1;
+            p2 = add2;
+            time = _time;
+        }
+    }
     public class MultiThreadHandler
     {
         public static readonly object SyncObj = new object();
@@ -34,20 +47,32 @@ namespace AxieDataFetcher.MultiThreading
         private List<AxieWinrate> winrateList = new List<AxieWinrate>();
         private List<AxieWinrate> practiceWinrateList = new List<AxieWinrate>();
 
+        private List<MatchPlayers> playerList = new List<MatchPlayers>();
+
         public void MultiThreadLogFetchAll(int startBattle, int endBattle)
         {
             perc = (endBattle - startBattle) / 100;
             Parallel.For(startBattle + 1, endBattle + 1, new ParallelOptions { MaxDegreeOfParallelism = 4 }, (x, state) =>
             {
-                WinrateCollector.GetBattleLogsData(x, UpdateWinrates, UpdatePracticeWinrates);
+                WinrateCollector.GetBattleLogsData(x, UpdateWinrates, UpdatePracticeWinrates, UpdateUniquePlayers);
             });
 
             var db = DatabaseConnection.GetDb();
             var collection = db.GetCollection<BsonDocument>("AxieWinrate");
             var practiceCollec = db.GetCollection<BsonDocument>("PracticeAxieWinrate");
-
+            Console.WriteLine("DB write phase");
+            int countr = winrateList.Count / 100;
+            int tick = 0;
+            int percc = 0;
             foreach (var wr in winrateList)
             {
+                tick++;
+                if (tick > countr)
+                {
+                    tick = 0;
+                    percc++;
+                    Console.WriteLine($"{percc}%");
+                }
                 var filterId = Builders<BsonDocument>.Filter.Eq("_id", wr.id);
                 var doc = collection.Find(filterId).FirstOrDefault();
                 if (doc != null)
@@ -85,6 +110,49 @@ namespace AxieDataFetcher.MultiThreading
                     }
                     collection.InsertOne(wr.ToBsonDocument());
                 }
+            }
+
+            var dauCollec = db.GetCollection<DailyUsers>("DailyBattleDAU");
+            var lastEleDau = (dauCollec.FindAsync(u => u.id > 0).GetAwaiter().GetResult()).ToList().OrderBy(a => a.id).Last();
+            var lastTime = lastEleDau.id;
+            playerList = playerList.OrderBy(d => d.time).ToList();
+            int time = lastTime + 86400;
+            var list = new List<string>();
+            int matchTime = 0;
+            var str = JsonConvert.SerializeObject(playerList);
+            Logger.Log(str);
+            foreach (var day in playerList)
+            {
+                if (day.time > time)
+                {
+                    dauCollec.InsertOne(new DailyUsers(time, list.Count));
+                    time += 86400;
+                    list.Clear();
+                }
+                else
+                {
+                    if (!list.Contains(day.p1))
+                    {
+                        list.Add(day.p1);
+                    }
+                    if (!list.Contains(day.p2))
+                    {
+                        list.Add(day.p2);
+                    }
+                    matchTime = day.time;
+                }
+            }
+            if (time - matchTime > 86400 * 3 / 4)
+            {
+                dauCollec.InsertOne(new DailyUsers(time, list.Count));
+                time += 86400;
+                list.Clear();
+            }
+
+            db.GetCollection<DailyBattles>("CumulDailyBattles").InsertOneAsync(new DailyBattles(LoopHandler.lastUnixTimeCheck, endBattle - startBattle)).GetAwaiter().GetResult();
+            using (var tw = new StreamWriter("AxieData/LastCheck.txt"))
+            {
+                tw.Write((endBattle - 1).ToString());
             }
         }
 
@@ -131,6 +199,14 @@ namespace AxieDataFetcher.MultiThreading
                     battleCount = 0;
                     Console.WriteLine($"{actualPerc}%");
                 }
+            }
+        }
+
+        public void UpdateUniquePlayers(string add1, string add2, int time)
+        {
+            lock (SyncObj)
+            {
+                playerList.Add(new MatchPlayers(add1, add2, time));
             }
         }
 

@@ -95,6 +95,7 @@
     <Compile Include="BlockchainFetcher\EggCount.cs" />
     <Compile Include="BlockchainFetcher\UniqueBuyer.cs" />
     <Compile Include="BlockchainFetcher\UniqueBuyerGain.cs" />
+    <Compile Include="Core\Logger.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="MarketPlaceDatabase\ApiCalls.cs" />
     <Compile Include="Mongo\DbFetch.cs" />

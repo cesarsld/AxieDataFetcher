@@ -125,7 +125,7 @@ namespace AxieDataFetcher.BattleData
             }
         }
 
-        public static void GetBattleLogsData(int battleId, Action<List<AxieWinrate>> updateList, Action<List<AxieWinrate>> updatePracticeList)
+        public static void GetBattleLogsData(int battleId, Action<List<AxieWinrate>> updateList, Action<List<AxieWinrate>> updatePracticeList, Action<string, string, int> updatePlayers)
         {
             Dictionary<int, Winrate> winrateData = new Dictionary<int, Winrate>();
             List<AxieWinrate> winrateList = new List<AxieWinrate>();
@@ -144,56 +144,66 @@ namespace AxieDataFetcher.BattleData
             }
             if (json != null)
             {
-                JObject axieJson = JObject.Parse(json);
-                JObject script = JObject.Parse((string)axieJson["script"]);
-                int time = Convert.ToInt32(((string)axieJson["createdAt"]).Remove(((string)axieJson["createdAt"]).Length - 3, 3));
+                try
+                {
+                    JObject axieJson = JObject.Parse(json);
+                    JObject script = JObject.Parse((string)axieJson["script"]);
+                    int time = Convert.ToInt32(((string)axieJson["createdAt"]).Remove(((string)axieJson["createdAt"]).Length - 3, 3));
 
-                int[] team1 = new int[3];
-                int[] team2 = new int[3];
-                for (int i = 0; i < 3; i++)
-                {
-                    team1[i] = (int)script["metadata"]["fighters"][i]["id"];
-                    team2[i] = (int)script["metadata"]["fighters"][i + 3]["id"];
-                }
-                int winningAxie = (int)script["result"]["lastAlive"][0];
-                int[] winningTeam;
-                int[] losingTeam;
-                if (team1.Contains(winningAxie))
-                {
-                    winningTeam = team1;
-                    losingTeam = team2;
-                }
-                else
-                {
-                    losingTeam = team1;
-                    winningTeam = team2;
-                }
-                for (int i = 0; i < 3; i++)
-                {
-                    var winner = winrateList.FirstOrDefault(a => a.id == winningTeam[i]);
-                    if (winner != null)
+                    int[] team1 = new int[3];
+                    int[] team2 = new int[3];
+                    for (int i = 0; i < 3; i++)
                     {
-                        winner.win++;
-                        winner.battleHistory += "1";
-                        winner.wonBattles.Add(battleId);
+                        team1[i] = (int)script["metadata"]["fighters"][i]["id"];
+                        team2[i] = (int)script["metadata"]["fighters"][i + 3]["id"];
                     }
-                    else winrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", time, battleId, true));
+                    int winningAxie = (int)script["result"]["lastAlive"][0];
+                    int[] winningTeam;
+                    int[] losingTeam;
+                    if (team1.Contains(winningAxie))
+                    {
+                        winningTeam = team1;
+                        losingTeam = team2;
+                    }
+                    else
+                    {
+                        losingTeam = team1;
+                        winningTeam = team2;
+                    }
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var winner = winrateList.FirstOrDefault(a => a.id == winningTeam[i]);
+                        if (winner != null)
+                        {
+                            winner.win++;
+                            winner.battleHistory += "1";
+                            winner.wonBattles.Add(battleId);
+                        }
+                        else winrateList.Add(new AxieWinrate(winningTeam[i], 1, 0, "0x1", time, battleId, true));
 
-                    var loser = winrateList.FirstOrDefault(a => a.id == losingTeam[i]);
-                    if (loser != null)
-                    {
-                        loser.loss++;
-                        loser.battleHistory += "0";
-                        loser.lostBattles.Add(battleId);
+                        var loser = winrateList.FirstOrDefault(a => a.id == losingTeam[i]);
+                        if (loser != null)
+                        {
+                            loser.loss++;
+                            loser.battleHistory += "0";
+                            loser.lostBattles.Add(battleId);
+                        }
+                        else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", time, battleId, false));
                     }
-                    else winrateList.Add(new AxieWinrate(losingTeam[i], 0, 1, "0x0", time, battleId, false));
+                    if (axieJson["expUpdates"] == null)
+                        updateList(winrateList);
+                    else if (axieJson["expUpdates"].Count() > 0)
+                        updateList(winrateList);
+                    else
+                        updatePracticeList(winrateList);
+                    updatePlayers((string)axieJson["winner"], (string)axieJson["loser"], Convert.ToInt32(((string)axieJson["createdAt"]).Remove(((string)axieJson["createdAt"]).Length - 3, 3)));
                 }
-                if (axieJson["expUpdates"] == null )
-                    updateList(winrateList);
-                else if (axieJson["expUpdates"].Count()  > 0)
-                    updateList(winrateList);
-                else
-                    updatePracticeList(winrateList);
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                    Console.WriteLine($"Something went wrong while fetch data for battle #{battleId}");
+                    Logger.Log($"Something went wrong while fetch data for battle #{battleId}");
+                }
             }
         }
 
@@ -320,6 +330,10 @@ namespace AxieDataFetcher.BattleData
             }
             var mtHandler = new MultiThreadHandler();
             mtHandler.MultiThreadLogFetchAll(lastChecked, lastBattle);
+            //using (var tw = new StreamWriter(battleNumberPath))
+            //{
+            //    tw.Write((lastBattle - 1).ToString());
+            //}
             Console.WriteLine("Wr sync done.");
             Console.Clear();
         }
