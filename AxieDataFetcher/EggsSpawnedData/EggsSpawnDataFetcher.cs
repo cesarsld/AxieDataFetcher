@@ -90,7 +90,7 @@ namespace AxieDataFetcher.EggsSpawnedData
             var dataPoints = new List<EggCount>();
             while (count < axieCount)
             {
-                var axieData = await AxieObjectV1.GetAxieFromApi(count);
+                var axieData = await AxieObjectV2.GetAxieFromApi(count);
                 if (axieData.sireId != 0) eggSpawned++;
                 count++;
             }

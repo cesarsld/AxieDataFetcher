@@ -91,24 +91,31 @@ namespace AxieDataFetcher.MultiThreading
                 }
                 else
                 {
-                    var data = AxieObjectV2.GetAxieFromApi(wr.id).GetAwaiter().GetResult();
-                    wr.moves = new string[4];
-                    var index = 0;
-                    foreach (var move in data.parts)
+                    try
                     {
-                        switch (move.type)
+                        var data = AxieObjectV2.GetAxieFromApi(wr.id).GetAwaiter().GetResult();
+                        wr.moves = new string[4];
+                        var index = 0;
+                        foreach (var move in data.parts)
                         {
-                            case "mouth":
-                            case "back":
-                            case "horn":
-                            case "tail":
-                                wr.moves[index] = move.name;
-                                index++;
-                                break;
+                            switch (move.type)
+                            {
+                                case "mouth":
+                                case "back":
+                                case "horn":
+                                case "tail":
+                                    wr.moves[index] = move.name;
+                                    index++;
+                                    break;
 
+                            }
                         }
+                        collection.InsertOne(wr.ToBsonDocument());
                     }
-                    collection.InsertOne(wr.ToBsonDocument());
+                    catch (Exception e)
+                    {
+                        Logger.Log(e.Message + $" Issue at axie {wr.id}");
+                    }
                 }
             }
 
@@ -120,13 +127,14 @@ namespace AxieDataFetcher.MultiThreading
             var list = new List<string>();
             int matchTime = 0;
             var str = JsonConvert.SerializeObject(playerList);
-            Logger.Log(str);
+            Logger.StoreData(str);
             foreach (var day in playerList)
             {
                 if (day.time > time)
                 {
                     dauCollec.InsertOne(new DailyUsers(time, list.Count));
                     time += 86400;
+                    Logger.Log($"Data in list after day {list.Count}");
                     list.Clear();
                 }
                 else
@@ -142,8 +150,9 @@ namespace AxieDataFetcher.MultiThreading
                     matchTime = day.time;
                 }
             }
-            if (time - matchTime > 86400 * 3 / 4)
+            if (time - matchTime < 86400 / 4)
             {
+                Logger.Log($"Data in list after last day {list.Count}");
                 dauCollec.InsertOne(new DailyUsers(time, list.Count));
                 time += 86400;
                 list.Clear();

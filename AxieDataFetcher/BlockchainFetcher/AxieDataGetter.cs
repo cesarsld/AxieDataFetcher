@@ -34,7 +34,7 @@ namespace AxieDataFetcher.BlockchainFetcher
         //private static string AxieLandPresaleContract = "0x7a11462A2adAed5571b91e34a127E4cbF51b152c";
         private static string AxieLandPresaleContract = "0x2299a91cc0bffd8c7f71349da8ab03527b79724f";
         #endregion
-        private static BigInteger lastBlockChecked = 7331816;//auction sales
+        private static BigInteger lastBlockChecked = 6316433;//auction sales
         //7331816 5318756 7338212
 
 
@@ -246,49 +246,63 @@ namespace AxieDataFetcher.BlockchainFetcher
                     await DatabaseConnection.GetDb().GetCollection<UniqueBuyer>("UniqueBuyers").InsertOneAsync(new UniqueBuyer(log.Event.winner));
                     uniqueGains++;
                 }
-                var axie = await AxieDetailData.GetAxieFromApi(Convert.ToInt32(log.Event.tokenId.ToString()));
+                AxieDetailData axie = new AxieDetailData();
+                try
+                {
+                    axie = await AxieDetailData.GetAxieFromApi(Convert.ToInt32(log.Event.tokenId.ToString()));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
                 if (axie.stage > 2)
                 {
                     axie.GetBodyType();
                     if (axie.title != null)
                     {
-                        var tag = axie.title;
-                        switch (tag)
+                        if (axie.mysticCount > 0)
                         {
-                            case "Origin":
-                                tagSaleTypeList[AxieTag.Origin].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                break;
-                            case "Meo Corp":
-                                tagSaleTypeList[AxieTag.MEO].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                break;
-                            case "Meo Corp II":
-                                tagSaleTypeList[AxieTag.MEO2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                break;
-                            case "Agamogenesis":
-                                tagSaleTypeList[AxieTag.Agamogenesis].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                break;
+                            switch (axie.mysticCount)
+                            {
+                                case 1:
+                                    mysticSaleTypeList[1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case 2:
+                                    mysticSaleTypeList[2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case 3:
+                                    mysticSaleTypeList[3].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case 4:
+                                    mysticSaleTypeList[4].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                            }
+                            mysticSaleTypeList[-1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                        }
+                        else
+                        {
+                            var tag = axie.title;
+                            switch (tag)
+                            {
+                                case "Origin":
+                                    tagSaleTypeList[AxieTag.Origin].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case "MEO Corp":
+                                    tagSaleTypeList[AxieTag.MEO].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case "MEO Corp II":
+                                    tagSaleTypeList[AxieTag.MEO2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                                case "Agamogenesis":
+                                    tagSaleTypeList[AxieTag.Agamogenesis].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                    break;
+                            }
                         }
                     }
                     else
                         tagSaleTypeList[AxieTag.Untagged].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
 
-                    switch (axie.mysticCount)
-                    {
-                        case 1:
-                            mysticSaleTypeList[1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                            break;
-                        case 2:
-                            mysticSaleTypeList[2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                            break;
-                        case 3:
-                            mysticSaleTypeList[3].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                            break;
-                        case 4:
-                            mysticSaleTypeList[4].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                            break;
-                    }
-                    if (axie.mysticCount > 0)
-                        mysticSaleTypeList[-1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+
                 }
             }
 
@@ -331,7 +345,7 @@ namespace AxieDataFetcher.BlockchainFetcher
             .InsertOneAsync(new UniqueBuyerGain(LoopHandler.lastUnixTimeCheck, landGains));
 
             var collec = DatabaseConnection.GetDb().GetCollection<EggCount>("EggSoldPerDay");
-            await collec.InsertOneAsync(new EggCount(LoopHandler.lastUnixTimeCheck, eggCount));
+            //await collec.InsertOneAsync(new EggCount(LoopHandler.lastUnixTimeCheck, eggCount));
             KeyGetter.SetLastCheckedBlock(lastBlock.BlockNumber.Value);
             Console.WriteLine("Pods sync done.");
         }
@@ -460,7 +474,7 @@ namespace AxieDataFetcher.BlockchainFetcher
 
             var uniqueBuyers = new List<string>();
             //var lastBlockvalue = lastBlock.BlockNumber.Value;
-            var lastBlockvalue = 7338212;
+            var lastBlockvalue = 7421144;
             var initialTime = await GetBlockTimeStamp(lastBlockChecked, web3);
             foreach (var value in tagSaleTypeList.Values) value.AddNewDataPoint(initialTime);
             foreach (var value in mysticSaleTypeList.Values) value.AddNewDataPoint(initialTime);
@@ -483,43 +497,48 @@ namespace AxieDataFetcher.BlockchainFetcher
                         axie.GetBodyType();
                         if (axie.title != null)
                         {
-                            var tag = axie.title;
-                            switch (tag)
+                            if (axie.mysticCount > 0)
                             {
-                                case "Origin":
-                                    tagSaleTypeList[AxieTag.Origin].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                    break;
-                                case "Meo Corp":
-                                    tagSaleTypeList[AxieTag.MEO].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                    break;
-                                case "Meo Corp II":
-                                    tagSaleTypeList[AxieTag.MEO2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                    break;
-                                case "Agamogenesis":
-                                    tagSaleTypeList[AxieTag.Agamogenesis].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                    break;
+                                switch (axie.mysticCount)
+                                {
+                                    case 1:
+                                        mysticSaleTypeList[1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                        break;
+                                    case 2:
+                                        mysticSaleTypeList[2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                        break;
+                                    case 3:
+                                        mysticSaleTypeList[3].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                        break;
+                                    case 4:
+                                        mysticSaleTypeList[4].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                        break;
+                                }
+                                mysticSaleTypeList[-1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                            }
+                            else
+                            {
+                                var tag = axie.title;
+                                switch (tag)
+                                {
+                                    case "Origin":
+                                        tagSaleTypeList[AxieTag.Origin].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                        break;
+                                    case "MEO Corp":
+                                        tagSaleTypeList[AxieTag.MEO].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                        break;
+                                    case "MEO Corp II":
+                                        tagSaleTypeList[AxieTag.MEO2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                        break;
+                                    case "Agamogenesis":
+                                        tagSaleTypeList[AxieTag.Agamogenesis].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
+                                        break;
+                                }
                             }
                         }
                         else
                             tagSaleTypeList[AxieTag.Untagged].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
 
-                        switch (axie.mysticCount)
-                        {
-                            case 1:
-                                mysticSaleTypeList[1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                break;
-                            case 2:
-                                mysticSaleTypeList[2].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                break;
-                            case 3:
-                                mysticSaleTypeList[3].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                break;
-                            case 4:
-                                mysticSaleTypeList[4].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
-                                break;
-                        }
-                        if (axie.mysticCount > 0)
-                            mysticSaleTypeList[-1].UpdateData(new DailySaleData(axie, log.Event.totalPrice));
 
                     }
                     if (logTime - initialTime > 86400)

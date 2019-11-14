@@ -9,6 +9,7 @@ using AxieDataFetcher.Core;
 using AxieDataFetcher.BattleData;
 using AxieDataFetcher.MultiThreading;
 using System.Diagnostics;
+using Newtonsoft.Json;
 
 namespace AxieDataFetcher
 {

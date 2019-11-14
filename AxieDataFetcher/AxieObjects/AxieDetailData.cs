@@ -28,7 +28,7 @@ namespace AxieDataFetcher.AxieObjects
                 {
                     try
                     {
-                        json = await wc.DownloadStringTaskAsync("https://axieinfinity.com/api/axies/" + axieId.ToString()); //https://axieinfinity.com/api/axies/ || https://api.axieinfinity.com/v1/axies/
+                        json = await wc.DownloadStringTaskAsync("https://axieinfinity.com/api/v2/axies/" + axieId.ToString()); //https://axieinfinity.com/api/axies/ || https://api.axieinfinity.com/v1/axies/
                         hasFetched = true;
                     }
 
